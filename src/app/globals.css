@@ -5,66 +5,81 @@
 }
 
 :root {
-  --background: #F2F2F7; /* iOS System Grouped Background */
+  --background: #F2F2F7;
   --foreground: #000000;
   --card: #FFFFFF;
   --card-foreground: #000000;
-  --primary: #007AFF; /* iOS Blue */
+  --primary: #007AFF;
   --primary-foreground: #ffffff;
-  --muted: #E5E5EA; /* iOS System Gray 6 */
-  --muted-foreground: #8E8E93; /* iOS System Gray */
-  --border: #C6C6C8; /* iOS Separator */
+  --muted: #E5E5EA;
+  --muted-foreground: #8E8E93;
+  --border: #C6C6C8;
   --radius: 12px;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #000000;
-    --foreground: #FFFFFF;
-    --card: #1C1C1E; /* iOS Dark Secondary BG */
-    --card-foreground: #FFFFFF;
-    --primary: #0A84FF; /* iOS Dark Blue */
-    --primary-foreground: #ffffff;
-    --muted: #2C2C2E;
-    --muted-foreground: #8E8E93;
-    --border: #38383A;
-  }
+[data-theme='dark'] {
+  --background: #000000;
+  --foreground: #FFFFFF;
+  --card: #1C1C1E;
+  --card-foreground: #FFFFFF;
+  --primary: #0A84FF;
+  --primary-foreground: #ffffff;
+  --muted: #2C2C2E;
+  --muted-foreground: #8E8E93;
+  --border: #38383A;
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+  /* Disable context menu and selection for native feel */
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+input, textarea {
+  -webkit-user-select: text;
+  user-select: text;
 }
 
 body {
   background-color: var(--background);
   color: var(--foreground);
   -webkit-font-smoothing: antialiased;
-  -webkit-tap-highlight-color: transparent;
-  user-select: none;
-}
-
-/* iOS Style Transitions */
-.ios-transition {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.ios-active-scale:active {
-  transform: scale(0.96);
-  opacity: 0.8;
+  overflow-x: hidden;
 }
 
 /* iOS Glassmorphism */
 .glass {
-  background: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.8);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
 }
 
-.dark .glass {
-  background: rgba(28, 28, 30, 0.7);
+[data-theme='dark'] .glass {
+  background: rgba(28, 28, 30, 0.8);
 }
 
-/* Hide scrollbar but keep functionality */
+.ios-active-scale:active {
+  transform: scale(0.97);
+  transition: transform 0.1s ease;
+}
+
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+/* Animations */
+.fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }

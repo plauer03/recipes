@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import BottomNav from "@/components/BottomNav";
+import { Providers } from "@/components/Providers";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -14,16 +15,17 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Smart Recipe Manager",
-  description: "Manage recipes, track calories, and shopping lists.",
+  title: "Recipe Manager",
+  description: "Smart Recipe Manager & Tracker",
 };
 
 export const viewport: Viewport = {
-  themeColor: "#436a10",
+  themeColor: "#007AFF",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({
@@ -32,16 +34,18 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="de" suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased flex justify-center`}
       >
-        <div className="app-container w-full max-w-[450px] min-h-screen bg-[var(--background)] shadow-2xl flex flex-direction-column relative overflow-hidden">
-          <main className="flex-grow p-5 pb-24 overflow-y-auto">
-            {children}
-          </main>
-          <BottomNav />
-        </div>
+        <Providers>
+          <div className="w-full max-w-[450px] min-h-screen bg-[var(--background)] shadow-2xl flex flex-col relative overflow-hidden">
+            <main className="flex-grow p-4 pb-28">
+              {children}
+            </main>
+            <BottomNav />
+          </div>
+        </Providers>
       </body>
     </html>
   );
