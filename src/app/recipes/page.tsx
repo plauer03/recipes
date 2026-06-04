@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { 
   Plus, Search, X, Check, ShoppingBag, 
   Trash2, ChefHat, ChevronRight, Scale,
-  Loader2, AlertCircle, Edit3
+  Loader2, AlertCircle, Edit3, Flame
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
@@ -38,6 +38,7 @@ export default function RecipesPage() {
   const [availableIngredients, setAvailableIngredients] = useState<any[]>([]);
   const [isSelectingIngredient, setIsSelectingIngredient] = useState(false);
   const [currentPickingIng, setCurrentPickingIng] = useState<any>(null);
+  const [ingSearchQuery, setIngSearchQuery] = useState("");
   const [ingAmount, setIngAmount] = useState("");
   const [ingUnit, setIngUnit] = useState("g");
 
@@ -76,6 +77,7 @@ export default function RecipesPage() {
     setCurrentPickingIng(null);
     setIsSelectingIngredient(false);
     setIngAmount("");
+    setIngSearchQuery("");
   };
 
   async function handleSave() {
@@ -182,7 +184,7 @@ export default function RecipesPage() {
     
     const { data: ings } = await supabase
       .from('recipe_ingredients')
-      .select('*, ingredients(name, unit_type)')
+      .select('*, ingredients(name, unit_type, calories_per_100g)')
       .eq('recipe_id', recipe.id);
     
     if (ings) setRecipeIngredients(ings);
@@ -212,6 +214,26 @@ export default function RecipesPage() {
       else alert("Fehler beim Hinzufügen.");
     }
   }
+
+  const getCaloriesPerPortion = () => {
+    if (!selectedRecipe || !recipeIngredients || recipeIngredients.length === 0) return 0;
+    
+    let totalCals = 0;
+    for (const ing of recipeIngredients) {
+      let amountInGrams = ing.amount;
+      if (ing.unit === 'EL') amountInGrams *= 15;
+      if (ing.unit === 'TL') amountInGrams *= 5;
+      
+      const calsPer100 = ing.ingredients?.calories_per_100g || 0;
+      totalCals += (amountInGrams / 100) * calsPer100;
+    }
+    
+    return Math.round(totalCals / (selectedRecipe.base_portions || 2));
+  };
+
+  const filteredIngredients = availableIngredients.filter(ing => 
+    ing.name.toLowerCase().includes(ingSearchQuery.toLowerCase())
+  );
 
   return (
     <div className="space-y-6 fade-in h-full flex flex-col overflow-hidden">
@@ -257,11 +279,11 @@ export default function RecipesPage() {
             <div className="w-10 h-1.5 bg-[var(--muted)] rounded-full mx-auto shrink-0" />
             <div className="flex justify-between items-center shrink-0">
               <h2 className="text-2xl font-bold tracking-tight">{editingId ? "Bearbeiten" : "Neues Rezept"}</h2>
-              <button onClick={() => setIsAdding(false)} disabled={saving} className="text-[var(--primary)] font-bold px-2">Fertig</button>
+              <button onClick={() => setIsAdding(false)} disabled={saving} className="text-[var(--primary)] font-bold px-2 active:opacity-50 transition-opacity">Fertig</button>
             </div>
 
             {error && (
-              <div className="bg-red-50 text-red-600 p-4 rounded-2xl flex items-center gap-2 text-xs font-bold shrink-0">
+              <div className="bg-red-50 text-red-600 p-4 rounded-2xl flex items-center gap-2 text-xs font-bold shrink-0 shadow-sm border border-red-100">
                 <AlertCircle size={16} /> {error}
               </div>
             )}
@@ -272,9 +294,9 @@ export default function RecipesPage() {
                 <div className="bg-[var(--card)] p-4 rounded-2xl flex justify-between items-center border border-[var(--border)]/10 shadow-sm">
                   <span className="font-bold text-sm">Basis Portionen</span>
                   <div className="flex items-center gap-4">
-                    <button onClick={() => setBasePortions(Math.max(1, basePortions - 1))} className="w-9 h-9 rounded-full bg-[var(--muted)]/50 flex items-center justify-center font-bold">-</button>
+                    <button onClick={() => setBasePortions(Math.max(1, basePortions - 1))} className="w-9 h-9 rounded-full bg-[var(--muted)]/50 flex items-center justify-center font-bold ios-active-scale">-</button>
                     <span className="font-bold text-lg">{basePortions}</span>
-                    <button onClick={() => setBasePortions(basePortions + 1)} className="w-9 h-9 rounded-full bg-[var(--muted)]/50 flex items-center justify-center font-bold">+</button>
+                    <button onClick={() => setBasePortions(basePortions + 1)} className="w-9 h-9 rounded-full bg-[var(--muted)]/50 flex items-center justify-center font-bold ios-active-scale">+</button>
                   </div>
                 </div>
               </div>
@@ -283,7 +305,7 @@ export default function RecipesPage() {
                 <h3 className="text-[10px] font-bold text-[var(--muted-foreground)] uppercase tracking-widest px-2">Zutaten</h3>
                 <div className="bg-[var(--card)] rounded-2xl border border-[var(--border)]/10 overflow-hidden shadow-sm">
                   {ingredientsList.map((ing, i) => (
-                    <div key={i} className="flex items-center gap-3 p-4 border-b border-[var(--border)]/5 text-sm">
+                    <div key={i} className="flex items-center gap-3 p-4 border-b border-[var(--border)]/5 text-sm animate-in fade-in">
                       <span className="font-bold flex-1">{ing.name}</span>
                       <span className="text-[var(--muted-foreground)] font-bold">{ing.amount}{ing.unit}</span>
                       <button onClick={() => setIngredientsList(ingredientsList.filter((_, idx) => idx !== i))} className="text-red-500/40 p-1"><X size={18} /></button>
@@ -317,10 +339,25 @@ export default function RecipesPage() {
             
             {!currentPickingIng ? (
               <>
-                <h2 className="text-xl font-bold tracking-tight">Zutat wählen</h2>
+                <div className="flex justify-between items-center shrink-0">
+                  <h2 className="text-xl font-bold tracking-tight">Zutat wählen</h2>
+                  <button onClick={() => setIsSelectingIngredient(false)} className="text-[var(--primary)] font-bold px-2 active:opacity-50">Abbrechen</button>
+                </div>
+                
+                <div className="relative shrink-0">
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--muted-foreground)]" size={18} />
+                  <input 
+                    type="text" 
+                    placeholder="Zutat suchen..." 
+                    value={ingSearchQuery}
+                    onChange={e => setIngSearchQuery(e.target.value)}
+                    className="w-full bg-[var(--card)] border border-[var(--border)]/10 rounded-2xl py-3.5 pl-11 pr-4 font-medium outline-none shadow-sm" 
+                  />
+                </div>
+
                 <div className="flex-1 overflow-y-auto no-scrollbar space-y-2 pb-10 px-1">
-                  {availableIngredients.map(ing => (
-                    <button key={ing.id} onClick={() => handlePickIngredient(ing)} className="w-full bg-[var(--card)] p-4 rounded-2xl flex justify-between items-center border border-[var(--border)]/5 text-left active:bg-[var(--muted)]/50">
+                  {filteredIngredients.map(ing => (
+                    <button key={ing.id} onClick={() => handlePickIngredient(ing)} className="w-full bg-[var(--card)] p-4 rounded-2xl flex justify-between items-center border border-[var(--border)]/5 ios-active-scale text-left">
                       <span className="font-bold">{ing.name}</span>
                       <ChevronRight size={18} className="opacity-20" />
                     </button>
@@ -328,7 +365,12 @@ export default function RecipesPage() {
                   {availableIngredients.length === 0 && (
                     <div className="py-20 text-center opacity-40 px-6">
                       <p className="font-bold">Keine Zutaten vorhanden.</p>
-                      <p className="text-sm mt-2">Lege zuerst Zutaten in den Einstellungen an.</p>
+                      <p className="text-sm mt-2 font-medium">Lege zuerst Zutaten in den Einstellungen an.</p>
+                    </div>
+                  )}
+                  {availableIngredients.length > 0 && filteredIngredients.length === 0 && (
+                    <div className="py-10 text-center opacity-40 px-6">
+                      <p className="font-bold">Keine Zutat gefunden.</p>
                     </div>
                   )}
                 </div>
@@ -339,7 +381,7 @@ export default function RecipesPage() {
                   <button onClick={() => setCurrentPickingIng(null)} className="p-2 -ml-2 text-[var(--primary)] font-bold">Zurück</button>
                   <h2 className="text-xl font-bold truncate">{currentPickingIng.name}</h2>
                 </div>
-                <div className="space-y-6 flex-1 overflow-y-auto no-scrollbar">
+                <div className="space-y-6 flex-1 overflow-y-auto no-scrollbar pb-10">
                   <div className="space-y-2">
                     <label className="text-[10px] font-bold text-[var(--muted-foreground)] uppercase tracking-widest px-1">Menge & Einheit</label>
                     <div className="flex gap-2 h-14">
@@ -349,7 +391,7 @@ export default function RecipesPage() {
                       </select>
                     </div>
                   </div>
-                  <button onClick={confirmIngredient} disabled={!ingAmount} className="w-full bg-[var(--foreground)] text-[var(--background)] py-4 rounded-2xl font-bold text-lg shadow-lg ios-active-scale">Übernehmen</button>
+                  <button onClick={confirmIngredient} disabled={!ingAmount} className="w-full bg-[var(--foreground)] text-[var(--background)] py-4 rounded-2xl font-bold text-lg shadow-lg shrink-0 ios-active-scale">Übernehmen</button>
                 </div>
               </div>
             )}
@@ -364,7 +406,14 @@ export default function RecipesPage() {
           <div className="relative w-full max-w-[450px] bg-[var(--background)] rounded-t-[32px] p-6 h-[88vh] flex flex-col gap-6 fade-in shadow-2xl overflow-hidden">
             <div className="w-10 h-1.5 bg-[var(--muted)] rounded-full mx-auto shrink-0" />
             <div className="flex justify-between items-start shrink-0">
-              <div className="flex-1 min-w-0 pr-4"><h2 className="text-2xl font-bold truncate">{selectedRecipe.title}</h2></div>
+              <div className="flex-1 min-w-0 pr-4">
+                <h2 className="text-2xl font-bold truncate pr-2">{selectedRecipe.title}</h2>
+                {recipeIngredients.length > 0 && (
+                  <div className="flex items-center gap-1.5 mt-1 text-[var(--primary)] font-bold text-sm bg-[var(--primary)]/10 w-fit px-2.5 py-0.5 rounded-full">
+                    <Flame size={14} /> {getCaloriesPerPortion()} kcal / Portion
+                  </div>
+                )}
+              </div>
               <div className="flex gap-2">
                 <button onClick={() => startEdit(selectedRecipe)} className="w-10 h-10 rounded-full bg-[var(--muted)]/50 flex items-center justify-center text-[var(--muted-foreground)] active:bg-[var(--muted)]"><Edit3 size={18} /></button>
                 <button onClick={() => deleteRecipe(selectedRecipe.id)} className="w-10 h-10 rounded-full bg-red-100/50 flex items-center justify-center text-red-500 active:bg-red-100"><Trash2 size={18} /></button>
