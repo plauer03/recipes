@@ -17,10 +17,9 @@ interface RecipeIngredient {
 }
 
 const AVAILABLE_TAGS = [
-  "Frühstück", "Hauptspeise", "Snack", 
-  "Warm", "Kalt", "Süß", "Herzhaft", 
-  "Asiatisch", "Deutsch", "Italienisch", 
-  "Gesund", "Schnell"
+  "Frühstück", "Hauptspeise", "Beilage", "Snack", "Dessert", 
+  "Schnell", "Meal Prep", "Vegan", "Vegetarisch", "High Protein", "Low Carb",
+  "Italienisch", "Asiatisch", "Mediterran", "Deutsch"
 ];
 
 export default function RecipesPage() {
