@@ -1,4 +1,4 @@
-import { Plus, Search, Flame } from "lucide-react";
+import { Plus, Search, Flame, UtensilsCrossed } from "lucide-react";
 
 export default function Dashboard() {
   return (
@@ -79,5 +79,3 @@ function UserIcon() {
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
   );
 }
-
-import { UtensilsCrossed } from "lucide-react";
