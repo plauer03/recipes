@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Check, ShoppingBag, Plus, Trash2, Loader2 } from "lucide-react";
+import { Check, ShoppingBag, Plus, Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
 export default function ShoppingListPage() {
@@ -17,18 +17,26 @@ export default function ShoppingListPage() {
   async function fetchItems() {
     setLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
-    const { data } = await supabase.from('shopping_list').select('*').eq('user_id', user?.id).order('created_at', { ascending: false });
+    // Fetch items and join with ingredients to get the name
+    const { data, error } = await supabase
+      .from('shopping_list')
+      .select(`
+        *,
+        ingredients (
+          name
+        )
+      `)
+      .eq('user_id', user?.id)
+      .order('created_at', { ascending: false });
+    
     if (data) setItems(data);
     setLoading(false);
   }
 
   const toggleItem = async (id: string, currentStatus: boolean) => {
-    // Optimistic UI
     setItems(items.map(item => item.id === id ? { ...item, is_checked: !currentStatus } : item));
-    
     await supabase.from('shopping_list').update({ is_checked: !currentStatus }).eq('id', id);
 
-    // If checked, wait 3 seconds and delete
     if (!currentStatus) {
       setTimeout(async () => {
         await supabase.from('shopping_list').delete().eq('id', id);
@@ -40,16 +48,11 @@ export default function ShoppingListPage() {
   const addItem = async () => {
     if (!newItem) return;
     const { data: { user } } = await supabase.auth.getUser();
-    const { data } = await supabase.from('shopping_list').insert([{
-      user_id: user?.id,
-      // Logic for ingredient_id lookup could be added here
-      // For now we just add text-based if we have a flex column or use the schema we have
-    }]).select();
-    
-    if (data) {
-      setItems([data[0], ...items]);
-      setNewItem("");
-    }
+    if (!user) return;
+
+    // Optional: Search if ingredient exists, or just show alert
+    alert("Zutaten können aktuell nur über Rezepte oder die Datenbank (zukünftig) hinzugefügt werden.");
+    setNewItem("");
   };
 
   return (
@@ -68,7 +71,7 @@ export default function ShoppingListPage() {
         <input 
           value={newItem}
           onChange={e => setNewItem(e.target.value)}
-          placeholder="Schnell hinzufügen..." 
+          placeholder="Zutat suchen..." 
           className="flex-1 bg-[var(--card)] border border-[var(--border)]/10 rounded-2xl py-4 px-6 font-medium outline-none shadow-sm"
         />
         <button onClick={addItem} className="w-14 h-14 rounded-2xl bg-[var(--foreground)] text-[var(--background)] flex items-center justify-center shadow-md">
@@ -76,7 +79,7 @@ export default function ShoppingListPage() {
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto no-scrollbar pb-20 space-y-4 px-1">
+      <div className="flex-1 overflow-y-auto no-scrollbar pb-32 space-y-4 px-1">
         {loading ? (
           <div className="py-20 text-center"><Loader2 className="animate-spin mx-auto text-[var(--primary)]" /></div>
         ) : items.length > 0 ? (
@@ -94,9 +97,16 @@ export default function ShoppingListPage() {
                 >
                   {item.is_checked && <Check size={16} strokeWidth={3} />}
                 </button>
-                <span className={`flex-1 font-bold text-[17px] ${item.is_checked ? "line-through" : ""}`}>
-                  Zutat {item.id.slice(0, 4)} {/* Temporary placeholder for name */}
-                </span>
+                <div className="flex-1 min-w-0">
+                  <p className={`font-bold text-[17px] truncate ${item.is_checked ? "line-through" : ""}`}>
+                    {item.ingredients?.name || "Unbekannte Zutat"}
+                  </p>
+                  {item.amount_in_grams > 0 && (
+                    <p className="text-[11px] font-bold text-[var(--muted-foreground)] uppercase tracking-widest mt-0.5">
+                      {item.amount_in_grams}g / Einheiten
+                    </p>
+                  )}
+                </div>
               </div>
             ))}
           </div>

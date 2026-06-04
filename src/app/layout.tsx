@@ -17,6 +17,11 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Recipe Manager",
   description: "Smart Recipe Manager & Tracker",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Recipe Manager",
+  },
 };
 
 export const viewport: Viewport = {

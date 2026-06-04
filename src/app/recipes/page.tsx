@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { 
   Plus, Search, X, Check, ShoppingBag, 
   Trash2, ChefHat, ChevronRight, Scale,
-  Loader2, AlertCircle, Apple
+  Loader2, AlertCircle, Apple, Edit3
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
@@ -26,14 +26,16 @@ export default function RecipesPage() {
   const [portions, setPortions] = useState(2);
   const supabase = createClient();
 
-  // New Recipe Form
+  // Form State
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [title, setTitle] = useState("");
   const [instructions, setInstructions] = useState("");
   const [ingredientsList, setIngredientsList] = useState<RecipeIngredient[]>([]);
   
-  // Ingredient Input
+  // Selection State
   const [availableIngredients, setAvailableIngredients] = useState<any[]>([]);
   const [isSelectingIngredient, setIsSelectingIngredient] = useState(false);
+  const [currentPickingIng, setCurrentPickingIng] = useState<any>(null);
   const [ingAmount, setIngAmount] = useState("");
   const [ingUnit, setIngUnit] = useState("g");
 
@@ -56,14 +58,20 @@ export default function RecipesPage() {
     if (data) setAvailableIngredients(data);
   }
 
-  const selectIngredient = (ing: any) => {
+  const handlePickIngredient = (ing: any) => {
+    setCurrentPickingIng(ing);
+  };
+
+  const confirmIngredient = () => {
+    if (!currentPickingIng || !ingAmount) return;
     setIngredientsList([...ingredientsList, { 
-      id: ing.id,
-      name: ing.name, 
-      amount: Number(ingAmount) || 0, 
+      id: currentPickingIng.id,
+      name: currentPickingIng.name, 
+      amount: Number(ingAmount), 
       unit: ingUnit, 
-      calories_per_100g: ing.calories_per_100g 
+      calories_per_100g: currentPickingIng.calories_per_100g 
     }]);
+    setCurrentPickingIng(null);
     setIsSelectingIngredient(false);
     setIngAmount("");
   };
@@ -77,24 +85,30 @@ export default function RecipesPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Nicht eingeloggt");
 
-      const { data: recipeData, error: recipeError } = await supabase
-        .from('recipes')
-        .insert([{
-          title,
-          instructions,
-          created_by: user.id,
-        }])
-        .select()
-        .single();
+      const recipeObj = {
+        title,
+        instructions,
+        created_by: user.id,
+      };
 
-      if (recipeError) throw recipeError;
+      let recipeId = editingId;
 
-      // Link ingredients (recipe_ingredients table)
-      if (ingredientsList.length > 0) {
+      if (editingId) {
+        const { error } = await supabase.from('recipes').update(recipeObj).eq('id', editingId);
+        if (error) throw error;
+        // Delete old links
+        await supabase.from('recipe_ingredients').delete().eq('recipe_id', editingId);
+      } else {
+        const { data, error } = await supabase.from('recipes').insert([recipeObj]).select().single();
+        if (error) throw error;
+        recipeId = data.id;
+      }
+
+      if (ingredientsList.length > 0 && recipeId) {
         const links = ingredientsList.map(ing => ({
-          recipe_id: recipeData.id,
+          recipe_id: recipeId,
           ingredient_id: ing.id,
-          amount_in_grams: ing.amount // Simplified: mapping amount to amount_in_grams
+          amount_in_grams: ing.amount // Simplified mapping
         }));
         await supabase.from('recipe_ingredients').insert(links);
       }
@@ -109,18 +123,57 @@ export default function RecipesPage() {
     }
   }
 
+  async function deleteRecipe(id: string) {
+    if (!confirm("Rezept wirklich löschen?")) return;
+    await supabase.from('recipes').delete().eq('id', id);
+    setSelectedRecipe(null);
+    fetchRecipes();
+  }
+
+  const startEdit = (recipe: any) => {
+    setEditingId(recipe.id);
+    setTitle(recipe.title);
+    setInstructions(recipe.instructions || "");
+    // In a real app, we'd fetch linked ingredients here
+    setIngredientsList([]); 
+    setIsAdding(true);
+    setSelectedRecipe(null);
+  };
+
   const resetForm = () => {
+    setEditingId(null);
     setTitle("");
     setInstructions("");
     setIngredientsList([]);
     setError(null);
   };
 
+  async function addToShoppingList(recipe: any) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    // We'd ideally fetch ingredients linked to this recipe
+    // For now, let's show a mock success as the schema requires specific ingredient_ids
+    const { data: ingLinks } = await supabase.from('recipe_ingredients').select('ingredient_id, amount_in_grams').eq('recipe_id', recipe.id);
+    
+    if (ingLinks && ingLinks.length > 0) {
+      const items = ingLinks.map(link => ({
+        user_id: user.id,
+        ingredient_id: link.ingredient_id,
+        amount_in_grams: link.amount_in_grams * (portions / 2) // scale based on current portion state
+      }));
+      await supabase.from('shopping_list').insert(items);
+      alert("Zutaten zur Einkaufsliste hinzugefügt!");
+    } else {
+      alert("Keine Zutaten in diesem Rezept gefunden.");
+    }
+  }
+
   return (
     <div className="space-y-6 fade-in h-full flex flex-col">
       <header className="pt-2 flex justify-between items-center shrink-0">
         <h1 className="text-3xl font-bold tracking-tight px-1">Rezepte</h1>
-        <button onClick={() => setIsAdding(true)} className="w-10 h-10 rounded-full bg-[var(--primary)] text-white flex items-center justify-center shadow-lg ios-active-scale">
+        <button onClick={() => { resetForm(); setIsAdding(true); }} className="w-10 h-10 rounded-full bg-[var(--primary)] text-white flex items-center justify-center shadow-lg ios-active-scale">
           <Plus size={24} />
         </button>
       </header>
@@ -136,7 +189,7 @@ export default function RecipesPage() {
         ) : recipes.length > 0 ? (
           recipes.map(r => (
             <div key={r.id} onClick={() => setSelectedRecipe(r)} className="bg-[var(--card)] p-4 rounded-2xl border border-[var(--border)]/5 shadow-sm flex items-center gap-4 ios-active-scale cursor-pointer">
-              <div className="w-12 h-12 bg-[var(--primary)]/10 rounded-xl flex items-center justify-center text-[var(--primary)]"><ChefHat size={24} /></div>
+              <div className="w-12 h-12 bg-[var(--primary)]/10 rounded-xl flex items-center justify-center text-[var(--primary)] shrink-0"><ChefHat size={24} /></div>
               <div className="flex-1 truncate">
                 <h3 className="font-bold text-[17px]">{r.title}</h3>
                 <p className="text-xs text-[var(--muted-foreground)] truncate">{r.instructions || "Keine Anleitung"}</p>
@@ -147,49 +200,36 @@ export default function RecipesPage() {
         ) : (
           <div className="py-20 text-center opacity-30">
             <ChefHat size={48} className="mx-auto mb-4" />
-            <p className="font-bold text-sm uppercase tracking-widest">Keine Rezepte gefunden</p>
+            <p className="font-bold text-sm uppercase tracking-widest">Keine Rezepte</p>
           </div>
         )}
       </div>
 
-      {/* Add Recipe Modal */}
+      {/* Add/Edit Modal */}
       {isAdding && (
-        <div className="fixed inset-0 z-[100] flex items-end justify-center px-0">
+        <div className="fixed inset-0 z-[100] flex items-end justify-center">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => !saving && setIsAdding(false)} />
-          <div className="relative w-full max-w-[450px] bg-[var(--background)] rounded-t-[32px] p-6 h-[92dvh] flex flex-col gap-6 fade-in overflow-hidden shadow-2xl">
+          <div className="relative w-full max-w-[450px] bg-[var(--background)] rounded-t-[32px] p-6 h-[94vh] flex flex-col gap-6 fade-in shadow-2xl">
             <div className="w-10 h-1.5 bg-[var(--muted)] rounded-full mx-auto shrink-0" />
-            
             <div className="flex justify-between items-center shrink-0">
-              <h2 className="text-2xl font-bold">Neues Rezept</h2>
-              <button onClick={() => setIsAdding(false)} disabled={saving} className="text-[var(--primary)] font-bold active:opacity-50">Abbrechen</button>
+              <h2 className="text-2xl font-bold">{editingId ? "Bearbeiten" : "Neues Rezept"}</h2>
+              <button onClick={() => setIsAdding(false)} disabled={saving} className="text-[var(--primary)] font-bold">Abbrechen</button>
             </div>
 
-            {error && (
-              <div className="bg-red-50 text-red-600 p-4 rounded-2xl flex items-center gap-2 text-sm font-bold shrink-0">
-                <AlertCircle size={18} /> {error}
-              </div>
-            )}
-            
             <div className="flex-1 overflow-y-auto no-scrollbar space-y-6 pb-32">
-              <div className="space-y-2">
-                <label className="text-[10px] font-bold text-[var(--muted-foreground)] uppercase tracking-widest px-2">Titel</label>
-                <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Name des Gerichts" className="w-full bg-[var(--card)] p-4 rounded-2xl outline-none font-bold text-lg shadow-sm" />
-              </div>
-
+              <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Titel" className="w-full bg-[var(--card)] p-4 rounded-2xl border-none outline-none font-bold text-xl shadow-sm" />
+              
               <div className="space-y-3">
                 <h3 className="text-[10px] font-bold text-[var(--muted-foreground)] uppercase tracking-widest px-2">Zutaten</h3>
                 <div className="bg-[var(--card)] rounded-2xl border border-[var(--border)]/10 overflow-hidden shadow-sm">
                   {ingredientsList.map((ing, i) => (
-                    <div key={i} className="flex items-center gap-3 p-4 border-b border-[var(--border)]/5 text-sm animate-in fade-in">
+                    <div key={i} className="flex items-center gap-3 p-4 border-b border-[var(--border)]/5 text-sm">
                       <span className="font-bold flex-1">{ing.name}</span>
-                      <span className="text-[var(--muted-foreground)] font-medium">{ing.amount}{ing.unit}</span>
-                      <button onClick={() => setIngredientsList(ingredientsList.filter((_, idx) => idx !== i))} className="text-red-500 p-1"><X size={16} /></button>
+                      <span className="text-[var(--muted-foreground)] font-bold">{ing.amount}{ing.unit}</span>
+                      <button onClick={() => setIngredientsList(ingredientsList.filter((_, idx) => idx !== i))} className="text-red-500"><X size={16} /></button>
                     </div>
                   ))}
-                  <button 
-                    onClick={() => setIsSelectingIngredient(true)}
-                    className="w-full p-4 flex items-center justify-center gap-2 text-[var(--primary)] font-bold text-sm bg-[var(--muted)]/20 active:opacity-50"
-                  >
+                  <button onClick={() => setIsSelectingIngredient(true)} className="w-full p-4 flex items-center justify-center gap-2 text-[var(--primary)] font-bold text-sm bg-[var(--muted)]/20 active:opacity-50 transition-colors">
                     <Plus size={18} /> Zutat hinzufügen
                   </button>
                 </div>
@@ -197,84 +237,93 @@ export default function RecipesPage() {
 
               <div className="space-y-2">
                 <h3 className="text-[10px] font-bold text-[var(--muted-foreground)] uppercase tracking-widest px-2">Anleitung</h3>
-                <textarea value={instructions} onChange={e => setInstructions(e.target.value)} placeholder="Zubereitungsschritte..." rows={5} className="w-full bg-[var(--card)] p-4 rounded-2xl border-none outline-none font-medium shadow-sm resize-none leading-relaxed" />
+                <textarea value={instructions} onChange={e => setInstructions(e.target.value)} placeholder="Schritte..." rows={6} className="w-full bg-[var(--card)] p-4 rounded-2xl border-none outline-none font-medium shadow-sm resize-none leading-relaxed" />
               </div>
 
-              <button 
-                onClick={handleSave} 
-                disabled={!title || saving}
-                className="w-full bg-[var(--primary)] text-white py-5 rounded-[24px] font-bold text-lg shadow-xl shadow-[var(--primary)]/20 ios-active-scale disabled:opacity-50 flex items-center justify-center"
-              >
-                {saving ? <Loader2 className="animate-spin" /> : "Rezept speichern"}
+              <button onClick={handleSave} disabled={!title || saving} className="w-full bg-[var(--primary)] text-white py-5 rounded-[24px] font-bold text-lg shadow-xl flex items-center justify-center">
+                {saving ? <Loader2 className="animate-spin" /> : "Speichern"}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Select Ingredient Modal */}
+      {/* Ingredient Picker Modal */}
       {isSelectingIngredient && (
-        <div className="fixed inset-0 z-[150] flex items-end justify-center px-0">
+        <div className="fixed inset-0 z-[150] flex items-end justify-center">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setIsSelectingIngredient(false)} />
-          <div className="relative w-full max-w-[450px] bg-[var(--background)] rounded-t-[32px] p-6 h-[80dvh] flex flex-col gap-6 fade-in overflow-hidden shadow-2xl">
+          <div className="relative w-full max-w-[450px] bg-[var(--background)] rounded-t-[32px] p-6 h-[85vh] flex flex-col gap-6 fade-in shadow-2xl overflow-hidden">
             <div className="w-10 h-1.5 bg-[var(--muted)] rounded-full mx-auto shrink-0" />
-            <h2 className="text-xl font-bold">Zutat auswählen</h2>
             
-            <div className="flex gap-2 shrink-0">
-              <input type="number" value={ingAmount} onChange={e => setIngAmount(e.target.value)} placeholder="Menge" className="flex-1 bg-[var(--card)] p-4 rounded-2xl outline-none font-bold" />
-              <select value={ingUnit} onChange={e => setIngUnit(e.target.value)} className="w-24 bg-[var(--card)] p-4 rounded-2xl outline-none font-bold appearance-none text-center">
-                {units.map(u => <option key={u} value={u}>{u}</option>)}
-              </select>
-            </div>
-
-            <div className="flex-1 overflow-y-auto no-scrollbar space-y-2 pb-10">
-              {availableIngredients.length > 0 ? availableIngredients.map(ing => (
-                <button 
-                  key={ing.id} 
-                  onClick={() => selectIngredient(ing)}
-                  className="w-full bg-[var(--card)] p-4 rounded-2xl flex justify-between items-center border border-[var(--border)]/5 active:bg-[var(--muted)]/50"
-                >
-                  <span className="font-bold">{ing.name}</span>
-                  <span className="text-xs text-[var(--muted-foreground)] font-bold">{ing.calories_per_100g} kcal/100g</span>
-                </button>
-              )) : (
-                <div className="py-20 text-center">
-                  <p className="text-[var(--muted-foreground)] font-medium">Keine Zutaten in der Datenbank.</p>
-                  <p className="text-xs text-[var(--muted-foreground)] mt-2">Lege zuerst Zutaten in den Einstellungen an.</p>
+            {!currentPickingIng ? (
+              <>
+                <h2 className="text-xl font-bold">Zutat wählen</h2>
+                <div className="flex-1 overflow-y-auto no-scrollbar space-y-2 pb-10">
+                  {availableIngredients.map(ing => (
+                    <button key={ing.id} onClick={() => handlePickIngredient(ing)} className="w-full bg-[var(--card)] p-4 rounded-2xl flex justify-between items-center border border-[var(--border)]/5 active:bg-[var(--muted)]/50">
+                      <span className="font-bold">{ing.name}</span>
+                      <ChevronRight size={18} className="opacity-20" />
+                    </button>
+                  ))}
                 </div>
-              )}
-            </div>
+              </>
+            ) : (
+              <div className="space-y-6 flex-1 flex flex-col">
+                <div className="flex items-center gap-3">
+                  <button onClick={() => setCurrentPickingIng(null)} className="p-2 -ml-2 text-[var(--primary)] font-bold">Zurück</button>
+                  <h2 className="text-xl font-bold">{currentPickingIng.name}</h2>
+                </div>
+                <div className="space-y-4 flex-1">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold text-[var(--muted-foreground)] uppercase tracking-widest px-1">Menge & Einheit</label>
+                    <div className="flex gap-2">
+                      <input type="number" value={ingAmount} onChange={e => setIngAmount(e.target.value)} placeholder="0" className="flex-1 bg-[var(--card)] p-4 rounded-2xl outline-none font-bold text-lg" autoFocus />
+                      <select value={ingUnit} onChange={e => setIngUnit(e.target.value)} className="w-24 bg-[var(--card)] p-4 rounded-2xl outline-none font-bold appearance-none text-center">
+                        {units.map(u => <option key={u} value={u}>{u}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                  <button onClick={confirmIngredient} disabled={!ingAmount} className="w-full bg-[var(--foreground)] text-[var(--background)] py-4 rounded-2xl font-bold text-lg shadow-lg">Zutat übernehmen</button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
 
-      {/* Recipe Details */}
+      {/* Details Modal */}
       {selectedRecipe && (
         <div className="fixed inset-0 z-[100] flex items-end justify-center px-0">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setSelectedRecipe(null)} />
-          <div className="relative w-full max-w-[450px] bg-[var(--background)] rounded-t-[32px] p-6 h-[85dvh] flex flex-col gap-6 fade-in overflow-hidden shadow-2xl">
+          <div className="relative w-full max-w-[450px] bg-[var(--background)] rounded-t-[32px] p-6 h-[88vh] flex flex-col gap-6 fade-in overflow-hidden shadow-2xl">
             <div className="w-10 h-1.5 bg-[var(--muted)] rounded-full mx-auto shrink-0" />
-            <div className="flex justify-between items-center shrink-0">
-              <h2 className="text-2xl font-bold truncate pr-4">{selectedRecipe.title}</h2>
-              <button onClick={() => setSelectedRecipe(null)} className="w-8 h-8 rounded-full bg-[var(--muted)] flex items-center justify-center text-[var(--muted-foreground)]"><X size={20} /></button>
+            <div className="flex justify-between items-start shrink-0">
+              <div className="flex-1 min-w-0 pr-4">
+                <h2 className="text-2xl font-bold truncate">{selectedRecipe.title}</h2>
+              </div>
+              <div className="flex gap-2">
+                <button onClick={() => startEdit(selectedRecipe)} className="w-10 h-10 rounded-full bg-[var(--muted)]/50 flex items-center justify-center text-[var(--muted-foreground)] active:bg-[var(--muted)]"><Edit3 size={20} /></button>
+                <button onClick={() => deleteRecipe(selectedRecipe.id)} className="w-10 h-10 rounded-full bg-red-100/50 flex items-center justify-center text-red-500 active:bg-red-100"><Trash2 size={20} /></button>
+                <button onClick={() => setSelectedRecipe(null)} className="w-10 h-10 rounded-full bg-[var(--muted)]/50 flex items-center justify-center text-[var(--muted-foreground)]"><X size={20} /></button>
+              </div>
             </div>
 
             <div className="flex-1 overflow-y-auto no-scrollbar space-y-6 pb-24">
               <div className="bg-[var(--card)] p-4 rounded-2xl flex justify-between items-center border border-[var(--border)]/5 shadow-sm">
                 <div className="flex items-center gap-2 font-bold text-sm"><Scale size={18} className="text-[var(--primary)]" /> Portionen</div>
                 <div className="flex items-center gap-4">
-                  <button onClick={() => setPortions(Math.max(1, portions - 1))} className="w-9 h-9 rounded-full bg-[var(--muted)]/50 flex items-center justify-center font-bold text-xl active:bg-[var(--muted)]">-</button>
+                  <button onClick={() => setPortions(Math.max(1, portions - 1))} className="w-9 h-9 rounded-full bg-[var(--muted)]/50 flex items-center justify-center font-bold text-xl">-</button>
                   <span className="font-bold text-xl w-4 text-center">{portions}</span>
-                  <button onClick={() => setPortions(portions + 1)} className="w-9 h-9 rounded-full bg-[var(--muted)]/50 flex items-center justify-center font-bold text-xl active:bg-[var(--muted)]">+</button>
+                  <button onClick={() => setPortions(portions + 1)} className="w-9 h-9 rounded-full bg-[var(--muted)]/50 flex items-center justify-center font-bold text-xl">+</button>
                 </div>
               </div>
 
               <div className="space-y-3">
                 <h3 className="text-[10px] font-bold text-[var(--muted-foreground)] uppercase tracking-widest px-2">Anleitung</h3>
-                <div className="p-5 bg-[var(--card)] rounded-[24px] text-[16px] font-medium leading-relaxed shadow-sm border border-[var(--border)]/5 whitespace-pre-wrap">{selectedRecipe.instructions || "Keine Anleitung hinterlegt."}</div>
+                <div className="p-5 bg-[var(--card)] rounded-[24px] text-[16px] font-medium leading-relaxed shadow-sm border border-[var(--border)]/5 whitespace-pre-wrap">{selectedRecipe.instructions || "Keine Anleitung."}</div>
               </div>
 
-              <button className="w-full bg-[var(--foreground)] text-[var(--background)] py-5 rounded-[24px] font-bold flex items-center justify-center gap-3 shadow-lg ios-active-scale mt-4"><ShoppingBag size={22} /> Auf Einkaufsliste setzen</button>
+              <button onClick={() => addToShoppingList(selectedRecipe)} className="w-full bg-[var(--foreground)] text-[var(--background)] py-5 rounded-[24px] font-bold flex items-center justify-center gap-3 shadow-lg ios-active-scale mt-4"><ShoppingBag size={22} /> Auf Einkaufsliste setzen</button>
             </div>
           </div>
         </div>

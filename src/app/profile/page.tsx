@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { 
   User, Mail, Settings, LogOut, 
   ChevronRight, Moon, ShieldCheck,
-  Plus, X, Apple
+  Plus, X, Apple, Loader2
 } from "lucide-react";
 
 export default function ProfilePage() {
@@ -36,10 +36,10 @@ export default function ProfilePage() {
     if (user) {
       const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single();
       if (data) {
-        setProfile(data);
+        setProfile({ ...data, email: user.email });
         setNewName(data.name || "");
       } else {
-        setProfile({ email: user.email });
+        setProfile({ email: user.email, name: "" });
       }
     }
   }
@@ -86,28 +86,33 @@ export default function ProfilePage() {
     }
   }
 
+  async function deleteIngredient(id: string) {
+    await supabase.from('ingredients').delete().eq('id', id);
+    fetchIngredients();
+  }
+
   return (
-    <div className="space-y-8 fade-in">
-      <header className="pt-4 px-1">
+    <div className="space-y-8 fade-in h-full flex flex-col">
+      <header className="pt-4 px-1 shrink-0">
         <h1 className="text-3xl font-bold tracking-tight">Einstellungen</h1>
       </header>
 
-      {/* User Profile Card */}
-      <div 
-        onClick={() => setIsEditingProfile(true)}
-        className="bg-[var(--card)] p-4 rounded-2xl flex items-center gap-4 border border-[var(--border)]/10 shadow-sm ios-active-scale cursor-pointer"
-      >
-        <div className="w-16 h-16 rounded-full bg-[var(--primary)] flex items-center justify-center text-white text-2xl font-bold uppercase">
-          {profile?.name?.[0] || profile?.email?.[0] || "?"}
+      <div className="flex-1 overflow-y-auto no-scrollbar pb-20 space-y-6">
+        {/* User Profile Card */}
+        <div 
+          onClick={() => setIsEditingProfile(true)}
+          className="bg-[var(--card)] p-4 rounded-2xl flex items-center gap-4 border border-[var(--border)]/10 shadow-sm ios-active-scale cursor-pointer"
+        >
+          <div className="w-16 h-16 rounded-full bg-[var(--primary)] flex items-center justify-center text-white text-2xl font-bold uppercase shrink-0">
+            {profile?.name?.[0] || profile?.email?.[0] || "?"}
+          </div>
+          <div className="flex-1 min-w-0">
+            <h2 className="text-xl font-bold truncate">{profile?.name || "Name festlegen"}</h2>
+            <p className="text-[var(--muted-foreground)] text-sm truncate">{profile?.email || "E-Mail wird geladen..."}</p>
+          </div>
+          <ChevronRight size={20} className="text-[var(--muted-foreground)] opacity-30 shrink-0" />
         </div>
-        <div className="flex-1 min-w-0">
-          <h2 className="text-xl font-bold truncate">{profile?.name || "Benutzername festlegen"}</h2>
-          <p className="text-[var(--muted-foreground)] text-sm truncate">{profile?.email || "E-Mail wird geladen..."}</p>
-        </div>
-        <ChevronRight size={20} className="text-[var(--muted-foreground)] opacity-30" />
-      </div>
 
-      <div className="space-y-6">
         <div className="space-y-2">
           <h3 className="text-[11px] font-bold text-[var(--muted-foreground)] uppercase tracking-widest px-4">Management</h3>
           <div className="bg-[var(--card)] rounded-2xl overflow-hidden border border-[var(--border)]/10 shadow-sm">
@@ -150,9 +155,12 @@ export default function ProfilePage() {
         <div className="fixed inset-0 z-[100] flex items-end justify-center">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setIsEditingProfile(false)} />
           <div className="relative w-full max-w-[450px] bg-[var(--background)] rounded-t-[32px] p-6 h-[50vh] flex flex-col gap-6 fade-in shadow-2xl">
-            <div className="w-10 h-1.5 bg-[var(--muted)] rounded-full mx-auto" />
-            <h2 className="text-2xl font-bold">Profil bearbeiten</h2>
-            <div className="space-y-4">
+            <div className="w-10 h-1.5 bg-[var(--muted)] rounded-full mx-auto shrink-0" />
+            <div className="flex justify-between items-center shrink-0">
+              <h2 className="text-2xl font-bold">Profil</h2>
+              <button onClick={() => setIsEditingProfile(false)} className="text-[var(--primary)] font-bold">Fertig</button>
+            </div>
+            <div className="space-y-4 flex-1">
               <div className="space-y-2">
                 <label className="text-[11px] font-bold text-[var(--muted-foreground)] uppercase tracking-widest px-1">Anzeigename</label>
                 <input 
@@ -162,7 +170,9 @@ export default function ProfilePage() {
                   placeholder="Dein Name"
                 />
               </div>
-              <button onClick={saveProfile} className="w-full bg-[var(--primary)] text-white py-4 rounded-2xl font-bold text-lg shadow-lg">Speichern</button>
+              <button onClick={saveProfile} disabled={loading} className="w-full bg-[var(--primary)] text-white py-4 rounded-2xl font-bold text-lg shadow-lg flex items-center justify-center">
+                {loading ? <Loader2 className="animate-spin" /> : "Speichern"}
+              </button>
             </div>
           </div>
         </div>
@@ -172,39 +182,54 @@ export default function ProfilePage() {
       {isManagingIngredients && (
         <div className="fixed inset-0 z-[100] flex items-end justify-center">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setIsManagingIngredients(false)} />
-          <div className="relative w-full max-w-[450px] bg-[var(--background)] rounded-t-[32px] p-6 h-[90vh] flex flex-col gap-6 fade-in shadow-2xl overflow-hidden">
+          <div className="relative w-full max-w-[450px] bg-[var(--background)] rounded-t-[32px] p-6 h-[92vh] flex flex-col gap-6 fade-in shadow-2xl overflow-hidden">
             <div className="w-10 h-1.5 bg-[var(--muted)] rounded-full mx-auto shrink-0" />
             <div className="flex justify-between items-center shrink-0">
-              <h2 className="text-2xl font-bold">Zutaten Datenbank</h2>
+              <h2 className="text-2xl font-bold">Zutaten</h2>
               <button onClick={() => setIsManagingIngredients(false)} className="text-[var(--primary)] font-bold">Fertig</button>
             </div>
 
-            <div className="space-y-4 shrink-0">
+            <div className="bg-[var(--card)] p-4 rounded-2xl border border-[var(--border)]/10 shadow-sm space-y-3 shrink-0">
+              <input 
+                value={newIngName}
+                onChange={e => setNewIngName(e.target.value)}
+                placeholder="Zutat Name"
+                className="w-full bg-[var(--muted)]/30 p-3 rounded-xl outline-none font-bold text-sm"
+              />
               <div className="flex gap-2">
-                <input 
-                  value={newIngName}
-                  onChange={e => setNewIngName(e.target.value)}
-                  placeholder="Zutat Name"
-                  className="flex-1 bg-[var(--card)] p-4 rounded-2xl outline-none font-bold text-sm shadow-sm"
-                />
                 <input 
                   type="number"
                   value={newIngCals}
                   onChange={e => setNewIngCals(e.target.value)}
-                  placeholder="kcal/100g"
-                  className="w-24 bg-[var(--card)] p-4 rounded-2xl outline-none font-bold text-sm shadow-sm"
+                  placeholder="kcal / 100g"
+                  className="flex-1 bg-[var(--muted)]/30 p-3 rounded-xl outline-none font-bold text-sm"
                 />
-                <button onClick={addIngredient} className="bg-[var(--primary)] text-white w-14 h-14 rounded-2xl flex items-center justify-center shadow-md shrink-0"><Plus /></button>
+                <button 
+                  onClick={addIngredient}
+                  className="bg-[var(--primary)] text-white px-6 rounded-xl flex items-center justify-center shadow-md ios-active-scale"
+                >
+                  <Plus size={20} />
+                </button>
               </div>
             </div>
 
             <div className="flex-1 overflow-y-auto no-scrollbar space-y-2 pb-10">
-              {ingredients.map((ing) => (
-                <div key={ing.id} className="bg-[var(--card)] p-4 rounded-2xl flex justify-between items-center border border-[var(--border)]/5">
-                  <span className="font-bold">{ing.name}</span>
-                  <span className="text-sm text-[var(--muted-foreground)] font-bold">{ing.calories_per_100g} kcal / 100g</span>
+              {ingredients.length > 0 ? ingredients.map((ing) => (
+                <div key={ing.id} className="bg-[var(--card)] p-4 rounded-2xl flex justify-between items-center border border-[var(--border)]/5 group">
+                  <div className="flex flex-col">
+                    <span className="font-bold">{ing.name}</span>
+                    <span className="text-[10px] text-[var(--muted-foreground)] font-bold uppercase">{ing.calories_per_100g} kcal/100g</span>
+                  </div>
+                  <button onClick={() => deleteIngredient(ing.id)} className="text-red-500 opacity-20 group-hover:opacity-100 p-2">
+                    <X size={16} />
+                  </button>
                 </div>
-              ))}
+              )) : (
+                <div className="py-20 text-center opacity-30">
+                  <Apple size={48} className="mx-auto mb-2" />
+                  <p className="text-sm font-bold uppercase">Keine Zutaten</p>
+                </div>
+              )}
             </div>
           </div>
         </div>

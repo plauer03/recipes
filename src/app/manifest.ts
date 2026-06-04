@@ -7,6 +7,7 @@ export default function manifest(): MetadataRoute.Manifest {
     description: "Smarter Rezept-Manager, Kalorien-Tracker und Einkaufsliste",
     start_url: "/",
     display: "standalone",
+    orientation: "portrait",
     background_color: "#ffffff",
     theme_color: "#436a10",
     icons: [
