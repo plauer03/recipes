@@ -31,6 +31,7 @@ export default function RecipesPage() {
   const [title, setTitle] = useState("");
   const [instructions, setInstructions] = useState("");
   const [ingredientsList, setIngredientsList] = useState<RecipeIngredient[]>([]);
+  const [basePortions, setBasePortions] = useState(2);
   
   // Selection State
   const [availableIngredients, setAvailableIngredients] = useState<any[]>([]);
@@ -39,7 +40,7 @@ export default function RecipesPage() {
   const [ingAmount, setIngAmount] = useState("");
   const [ingUnit, setIngUnit] = useState("g");
 
-  const units = ["g", "ml", "Stk", "EL", "TL"];
+  const units = ["g", "ml", "EL", "TL"];
 
   useEffect(() => {
     fetchRecipes();
@@ -88,19 +89,19 @@ export default function RecipesPage() {
       const recipeObj = {
         title,
         instructions,
+        base_portions: basePortions,
         created_by: user.id,
       };
 
       let recipeId = editingId;
 
       if (editingId) {
-        const { error } = await supabase.from('recipes').update(recipeObj).eq('id', editingId);
-        if (error) throw error;
-        // Delete old links
+        const { error: upErr } = await supabase.from('recipes').update(recipeObj).eq('id', editingId);
+        if (upErr) throw upErr;
         await supabase.from('recipe_ingredients').delete().eq('recipe_id', editingId);
       } else {
-        const { data, error } = await supabase.from('recipes').insert([recipeObj]).select().single();
-        if (error) throw error;
+        const { data, error: insErr } = await supabase.from('recipes').insert([recipeObj]).select().single();
+        if (insErr) throw insErr;
         recipeId = data.id;
       }
 
@@ -108,7 +109,8 @@ export default function RecipesPage() {
         const links = ingredientsList.map(ing => ({
           recipe_id: recipeId,
           ingredient_id: ing.id,
-          amount_in_grams: ing.amount // Simplified mapping
+          amount_in_grams: ing.amount,
+          unit: ing.unit
         }));
         await supabase.from('recipe_ingredients').insert(links);
       }
@@ -125,17 +127,35 @@ export default function RecipesPage() {
 
   async function deleteRecipe(id: string) {
     if (!confirm("Rezept wirklich löschen?")) return;
-    await supabase.from('recipes').delete().eq('id', id);
-    setSelectedRecipe(null);
-    fetchRecipes();
+    const { error } = await supabase.from('recipes').delete().eq('id', id);
+    if (!error) {
+      setRecipes(recipes.filter(r => r.id !== id));
+      setSelectedRecipe(null);
+    }
   }
 
-  const startEdit = (recipe: any) => {
+  const startEdit = async (recipe: any) => {
     setEditingId(recipe.id);
     setTitle(recipe.title);
     setInstructions(recipe.instructions || "");
-    // In a real app, we'd fetch linked ingredients here
-    setIngredientsList([]); 
+    setBasePortions(recipe.base_portions || 2);
+    
+    // Fetch ingredients
+    const { data: ings } = await supabase
+      .from('recipe_ingredients')
+      .select('*, ingredients(name, calories_per_100g)')
+      .eq('recipe_id', recipe.id);
+    
+    if (ings) {
+      setIngredientsList(ings.map((i: any) => ({
+        id: i.ingredient_id,
+        name: i.ingredients.name,
+        amount: i.amount_in_grams,
+        unit: i.unit || 'g',
+        calories_per_100g: i.ingredients.calories_per_100g
+      })));
+    }
+    
     setIsAdding(true);
     setSelectedRecipe(null);
   };
@@ -145,6 +165,7 @@ export default function RecipesPage() {
     setTitle("");
     setInstructions("");
     setIngredientsList([]);
+    setBasePortions(2);
     setError(null);
   };
 
@@ -152,25 +173,32 @@ export default function RecipesPage() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    // We'd ideally fetch ingredients linked to this recipe
-    // For now, let's show a mock success as the schema requires specific ingredient_ids
-    const { data: ingLinks } = await supabase.from('recipe_ingredients').select('ingredient_id, amount_in_grams').eq('recipe_id', recipe.id);
+    const { data: ingLinks } = await supabase
+      .from('recipe_ingredients')
+      .select('ingredient_id, amount_in_grams, unit')
+      .eq('recipe_id', recipe.id);
     
     if (ingLinks && ingLinks.length > 0) {
-      const items = ingLinks.map(link => ({
-        user_id: user.id,
-        ingredient_id: link.ingredient_id,
-        amount_in_grams: link.amount_in_grams * (portions / 2) // scale based on current portion state
-      }));
+      const scale = portions / (recipe.base_portions || 2);
+      const items = ingLinks.map(link => {
+        let finalAmount = link.amount_in_grams * scale;
+        // Conversion logic EL/TL -> ml/g
+        if (link.unit === 'EL') finalAmount *= 15;
+        if (link.unit === 'TL') finalAmount *= 5;
+
+        return {
+          user_id: user.id,
+          ingredient_id: link.ingredient_id,
+          amount_in_grams: Math.round(finalAmount)
+        };
+      });
       await supabase.from('shopping_list').insert(items);
       alert("Zutaten zur Einkaufsliste hinzugefügt!");
-    } else {
-      alert("Keine Zutaten in diesem Rezept gefunden.");
     }
   }
 
   return (
-    <div className="space-y-6 fade-in h-full flex flex-col">
+    <div className="space-y-6 fade-in h-full flex flex-col overflow-hidden">
       <header className="pt-2 flex justify-between items-center shrink-0">
         <h1 className="text-3xl font-bold tracking-tight px-1">Rezepte</h1>
         <button onClick={() => { resetForm(); setIsAdding(true); }} className="w-10 h-10 rounded-full bg-[var(--primary)] text-white flex items-center justify-center shadow-lg ios-active-scale">
@@ -188,11 +216,14 @@ export default function RecipesPage() {
           <div className="py-20 text-center"><Loader2 className="animate-spin mx-auto text-[var(--primary)]" /></div>
         ) : recipes.length > 0 ? (
           recipes.map(r => (
-            <div key={r.id} onClick={() => setSelectedRecipe(r)} className="bg-[var(--card)] p-4 rounded-2xl border border-[var(--border)]/5 shadow-sm flex items-center gap-4 ios-active-scale cursor-pointer">
+            <div key={r.id} onClick={() => {
+              setSelectedRecipe(r);
+              setPortions(r.base_portions || 2);
+            }} className="bg-[var(--card)] p-4 rounded-2xl border border-[var(--border)]/5 shadow-sm flex items-center gap-4 ios-active-scale cursor-pointer">
               <div className="w-12 h-12 bg-[var(--primary)]/10 rounded-xl flex items-center justify-center text-[var(--primary)] shrink-0"><ChefHat size={24} /></div>
               <div className="flex-1 truncate">
                 <h3 className="font-bold text-[17px]">{r.title}</h3>
-                <p className="text-xs text-[var(--muted-foreground)] truncate">{r.instructions || "Keine Anleitung"}</p>
+                <p className="text-[10px] text-[var(--muted-foreground)] font-bold uppercase">{r.base_portions || 2} Portionen Basis</p>
               </div>
               <ChevronRight size={18} className="text-[var(--muted-foreground)] opacity-20" />
             </div>
@@ -209,15 +240,26 @@ export default function RecipesPage() {
       {isAdding && (
         <div className="fixed inset-0 z-[100] flex items-end justify-center">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => !saving && setIsAdding(false)} />
-          <div className="relative w-full max-w-[450px] bg-[var(--background)] rounded-t-[32px] p-6 h-[94vh] flex flex-col gap-6 fade-in shadow-2xl">
+          <div className="relative w-full max-w-[450px] bg-[var(--background)] rounded-t-[32px] p-6 h-[94vh] flex flex-col gap-6 fade-in shadow-2xl overflow-hidden">
             <div className="w-10 h-1.5 bg-[var(--muted)] rounded-full mx-auto shrink-0" />
             <div className="flex justify-between items-center shrink-0">
               <h2 className="text-2xl font-bold">{editingId ? "Bearbeiten" : "Neues Rezept"}</h2>
-              <button onClick={() => setIsAdding(false)} disabled={saving} className="text-[var(--primary)] font-bold">Abbrechen</button>
+              <button onClick={() => setIsAdding(false)} disabled={saving} className="text-[var(--primary)] font-bold">Fertig</button>
             </div>
 
             <div className="flex-1 overflow-y-auto no-scrollbar space-y-6 pb-32">
-              <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Titel" className="w-full bg-[var(--card)] p-4 rounded-2xl border-none outline-none font-bold text-xl shadow-sm" />
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-[var(--muted-foreground)] uppercase tracking-widest px-2">Basis Info</label>
+                <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Titel" className="w-full bg-[var(--card)] p-4 rounded-2xl border-none outline-none font-bold text-xl shadow-sm mb-3" />
+                <div className="bg-[var(--card)] p-4 rounded-2xl flex justify-between items-center shadow-sm">
+                  <span className="font-bold text-sm">Basis Portionen</span>
+                  <div className="flex items-center gap-4">
+                    <button onClick={() => setBasePortions(Math.max(1, basePortions - 1))} className="w-8 h-8 rounded-full bg-[var(--muted)]/50 flex items-center justify-center font-bold">-</button>
+                    <span className="font-bold">{basePortions}</span>
+                    <button onClick={() => setBasePortions(basePortions + 1)} className="w-8 h-8 rounded-full bg-[var(--muted)]/50 flex items-center justify-center font-bold">+</button>
+                  </div>
+                </div>
+              </div>
               
               <div className="space-y-3">
                 <h3 className="text-[10px] font-bold text-[var(--muted-foreground)] uppercase tracking-widest px-2">Zutaten</h3>
@@ -229,7 +271,7 @@ export default function RecipesPage() {
                       <button onClick={() => setIngredientsList(ingredientsList.filter((_, idx) => idx !== i))} className="text-red-500"><X size={16} /></button>
                     </div>
                   ))}
-                  <button onClick={() => setIsSelectingIngredient(true)} className="w-full p-4 flex items-center justify-center gap-2 text-[var(--primary)] font-bold text-sm bg-[var(--muted)]/20 active:opacity-50 transition-colors">
+                  <button onClick={() => setIsSelectingIngredient(true)} className="w-full p-4 flex items-center justify-center gap-2 text-[var(--primary)] font-bold text-sm bg-[var(--muted)]/20 active:opacity-50">
                     <Plus size={18} /> Zutat hinzufügen
                   </button>
                 </div>
@@ -258,7 +300,7 @@ export default function RecipesPage() {
             {!currentPickingIng ? (
               <>
                 <h2 className="text-xl font-bold">Zutat wählen</h2>
-                <div className="flex-1 overflow-y-auto no-scrollbar space-y-2 pb-10">
+                <div className="flex-1 overflow-y-auto no-scrollbar space-y-2 pb-10 px-1">
                   {availableIngredients.map(ing => (
                     <button key={ing.id} onClick={() => handlePickIngredient(ing)} className="w-full bg-[var(--card)] p-4 rounded-2xl flex justify-between items-center border border-[var(--border)]/5 active:bg-[var(--muted)]/50">
                       <span className="font-bold">{ing.name}</span>
@@ -268,12 +310,12 @@ export default function RecipesPage() {
                 </div>
               </>
             ) : (
-              <div className="space-y-6 flex-1 flex flex-col">
-                <div className="flex items-center gap-3">
+              <div className="space-y-6 flex-1 flex flex-col overflow-hidden">
+                <div className="flex items-center gap-3 shrink-0">
                   <button onClick={() => setCurrentPickingIng(null)} className="p-2 -ml-2 text-[var(--primary)] font-bold">Zurück</button>
-                  <h2 className="text-xl font-bold">{currentPickingIng.name}</h2>
+                  <h2 className="text-xl font-bold truncate">{currentPickingIng.name}</h2>
                 </div>
-                <div className="space-y-4 flex-1">
+                <div className="space-y-6 flex-1 overflow-y-auto no-scrollbar pb-10 px-1">
                   <div className="space-y-2">
                     <label className="text-[10px] font-bold text-[var(--muted-foreground)] uppercase tracking-widest px-1">Menge & Einheit</label>
                     <div className="flex gap-2">
@@ -283,7 +325,7 @@ export default function RecipesPage() {
                       </select>
                     </div>
                   </div>
-                  <button onClick={confirmIngredient} disabled={!ingAmount} className="w-full bg-[var(--foreground)] text-[var(--background)] py-4 rounded-2xl font-bold text-lg shadow-lg">Zutat übernehmen</button>
+                  <button onClick={confirmIngredient} disabled={!ingAmount} className="w-full bg-[var(--foreground)] text-[var(--background)] py-4 rounded-2xl font-bold text-lg shadow-lg shrink-0">Übernehmen</button>
                 </div>
               </div>
             )}
@@ -295,35 +337,35 @@ export default function RecipesPage() {
       {selectedRecipe && (
         <div className="fixed inset-0 z-[100] flex items-end justify-center px-0">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setSelectedRecipe(null)} />
-          <div className="relative w-full max-w-[450px] bg-[var(--background)] rounded-t-[32px] p-6 h-[88vh] flex flex-col gap-6 fade-in overflow-hidden shadow-2xl">
+          <div className="relative w-full max-w-[450px] bg-[var(--background)] rounded-t-[32px] p-6 h-[88vh] flex flex-col gap-6 fade-in shadow-2xl overflow-hidden">
             <div className="w-10 h-1.5 bg-[var(--muted)] rounded-full mx-auto shrink-0" />
             <div className="flex justify-between items-start shrink-0">
               <div className="flex-1 min-w-0 pr-4">
                 <h2 className="text-2xl font-bold truncate">{selectedRecipe.title}</h2>
               </div>
               <div className="flex gap-2">
-                <button onClick={() => startEdit(selectedRecipe)} className="w-10 h-10 rounded-full bg-[var(--muted)]/50 flex items-center justify-center text-[var(--muted-foreground)] active:bg-[var(--muted)]"><Edit3 size={20} /></button>
-                <button onClick={() => deleteRecipe(selectedRecipe.id)} className="w-10 h-10 rounded-full bg-red-100/50 flex items-center justify-center text-red-500 active:bg-red-100"><Trash2 size={20} /></button>
+                <button onClick={() => startEdit(selectedRecipe)} className="w-10 h-10 rounded-full bg-[var(--muted)]/50 flex items-center justify-center text-[var(--muted-foreground)]"><Edit3 size={20} /></button>
+                <button onClick={() => deleteRecipe(selectedRecipe.id)} className="w-10 h-10 rounded-full bg-red-100/50 flex items-center justify-center text-red-500"><Trash2 size={20} /></button>
                 <button onClick={() => setSelectedRecipe(null)} className="w-10 h-10 rounded-full bg-[var(--muted)]/50 flex items-center justify-center text-[var(--muted-foreground)]"><X size={20} /></button>
               </div>
             </div>
 
             <div className="flex-1 overflow-y-auto no-scrollbar space-y-6 pb-24">
-              <div className="bg-[var(--card)] p-4 rounded-2xl flex justify-between items-center border border-[var(--border)]/5 shadow-sm">
+              <div className="bg-[var(--card)] p-4 rounded-2xl flex justify-between items-center border border-[var(--border)]/5 shadow-sm shrink-0">
                 <div className="flex items-center gap-2 font-bold text-sm"><Scale size={18} className="text-[var(--primary)]" /> Portionen</div>
                 <div className="flex items-center gap-4">
-                  <button onClick={() => setPortions(Math.max(1, portions - 1))} className="w-9 h-9 rounded-full bg-[var(--muted)]/50 flex items-center justify-center font-bold text-xl">-</button>
+                  <button onClick={() => setPortions(Math.max(1, portions - 1))} className="w-9 h-9 rounded-full bg-[var(--muted)]/50 flex items-center justify-center font-bold text-xl active:bg-[var(--muted)]">-</button>
                   <span className="font-bold text-xl w-4 text-center">{portions}</span>
-                  <button onClick={() => setPortions(portions + 1)} className="w-9 h-9 rounded-full bg-[var(--muted)]/50 flex items-center justify-center font-bold text-xl">+</button>
+                  <button onClick={() => setPortions(portions + 1)} className="w-9 h-9 rounded-full bg-[var(--muted)]/50 flex items-center justify-center font-bold text-xl active:bg-[var(--muted)]">+</button>
                 </div>
               </div>
 
               <div className="space-y-3">
                 <h3 className="text-[10px] font-bold text-[var(--muted-foreground)] uppercase tracking-widest px-2">Anleitung</h3>
-                <div className="p-5 bg-[var(--card)] rounded-[24px] text-[16px] font-medium leading-relaxed shadow-sm border border-[var(--border)]/5 whitespace-pre-wrap">{selectedRecipe.instructions || "Keine Anleitung."}</div>
+                <div className="p-5 bg-[var(--card)] rounded-[24px] text-[16px] font-medium leading-relaxed shadow-sm border border-[var(--border)]/5 whitespace-pre-wrap shrink-0">{selectedRecipe.instructions || "Keine Anleitung hinterlegt."}</div>
               </div>
 
-              <button onClick={() => addToShoppingList(selectedRecipe)} className="w-full bg-[var(--foreground)] text-[var(--background)] py-5 rounded-[24px] font-bold flex items-center justify-center gap-3 shadow-lg ios-active-scale mt-4"><ShoppingBag size={22} /> Auf Einkaufsliste setzen</button>
+              <button onClick={() => addToShoppingList(selectedRecipe)} className="w-full bg-[var(--foreground)] text-[var(--background)] py-5 rounded-[24px] font-bold flex items-center justify-center gap-3 shadow-lg ios-active-scale mt-4 shrink-0"><ShoppingBag size={22} /> Auf Einkaufsliste setzen</button>
             </div>
           </div>
         </div>

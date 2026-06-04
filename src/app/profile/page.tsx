@@ -25,6 +25,7 @@ export default function ProfilePage() {
   const [ingredients, setIngredients] = useState<any[]>([]);
   const [newIngName, setNewIngName] = useState("");
   const [newIngCals, setNewIngCals] = useState("");
+  const [newIngUnitType, setNewIngUnitType] = useState("g");
 
   useEffect(() => {
     fetchProfile();
@@ -77,6 +78,7 @@ export default function ProfilePage() {
     const { error } = await supabase.from('ingredients').insert([{
       name: newIngName,
       calories_per_100g: Number(newIngCals) || 0,
+      unit_type: newIngUnitType,
       created_by: user?.id
     }]);
     if (!error) {
@@ -92,12 +94,12 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="space-y-8 fade-in h-full flex flex-col">
+    <div className="space-y-8 fade-in h-full flex flex-col overflow-hidden">
       <header className="pt-4 px-1 shrink-0">
         <h1 className="text-3xl font-bold tracking-tight">Einstellungen</h1>
       </header>
 
-      <div className="flex-1 overflow-y-auto no-scrollbar pb-20 space-y-6">
+      <div className="flex-1 overflow-y-auto no-scrollbar space-y-6">
         {/* User Profile Card */}
         <div 
           onClick={() => setIsEditingProfile(true)}
@@ -108,7 +110,7 @@ export default function ProfilePage() {
           </div>
           <div className="flex-1 min-w-0">
             <h2 className="text-xl font-bold truncate">{profile?.name || "Name festlegen"}</h2>
-            <p className="text-[var(--muted-foreground)] text-sm truncate">{profile?.email || "E-Mail wird geladen..."}</p>
+            <p className="text-[var(--muted-foreground)] text-sm truncate">{profile?.email || "Wird geladen..."}</p>
           </div>
           <ChevronRight size={20} className="text-[var(--muted-foreground)] opacity-30 shrink-0" />
         </div>
@@ -154,7 +156,7 @@ export default function ProfilePage() {
       {isEditingProfile && (
         <div className="fixed inset-0 z-[100] flex items-end justify-center">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setIsEditingProfile(false)} />
-          <div className="relative w-full max-w-[450px] bg-[var(--background)] rounded-t-[32px] p-6 h-[50vh] flex flex-col gap-6 fade-in shadow-2xl">
+          <div className="relative w-full max-w-[450px] bg-[var(--background)] rounded-t-[32px] p-6 h-[50dvh] flex flex-col gap-6 fade-in shadow-2xl">
             <div className="w-10 h-1.5 bg-[var(--muted)] rounded-full mx-auto shrink-0" />
             <div className="flex justify-between items-center shrink-0">
               <h2 className="text-2xl font-bold">Profil</h2>
@@ -201,9 +203,17 @@ export default function ProfilePage() {
                   type="number"
                   value={newIngCals}
                   onChange={e => setNewIngCals(e.target.value)}
-                  placeholder="kcal / 100g"
+                  placeholder="kcal / 100g/ml"
                   className="flex-1 bg-[var(--muted)]/30 p-3 rounded-xl outline-none font-bold text-sm"
                 />
+                <select 
+                  value={newIngUnitType} 
+                  onChange={e => setNewIngUnitType(e.target.value)}
+                  className="w-20 bg-[var(--muted)]/30 p-3 rounded-xl outline-none font-bold text-sm appearance-none text-center"
+                >
+                  <option value="g">g</option>
+                  <option value="ml">ml</option>
+                </select>
                 <button 
                   onClick={addIngredient}
                   className="bg-[var(--primary)] text-white px-6 rounded-xl flex items-center justify-center shadow-md ios-active-scale"
@@ -213,12 +223,12 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto no-scrollbar space-y-2 pb-10">
+            <div className="flex-1 overflow-y-auto no-scrollbar space-y-2 pb-10 px-1">
               {ingredients.length > 0 ? ingredients.map((ing) => (
                 <div key={ing.id} className="bg-[var(--card)] p-4 rounded-2xl flex justify-between items-center border border-[var(--border)]/5 group">
                   <div className="flex flex-col">
                     <span className="font-bold">{ing.name}</span>
-                    <span className="text-[10px] text-[var(--muted-foreground)] font-bold uppercase">{ing.calories_per_100g} kcal/100g</span>
+                    <span className="text-[10px] text-[var(--muted-foreground)] font-bold uppercase">{ing.calories_per_100g} kcal/{ing.unit_type || '100g'}</span>
                   </div>
                   <button onClick={() => deleteIngredient(ing.id)} className="text-red-500 opacity-20 group-hover:opacity-100 p-2">
                     <X size={16} />
