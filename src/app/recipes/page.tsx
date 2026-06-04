@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { 
   Plus, Search, X, Check, ShoppingBag, 
   Trash2, ChefHat, ChevronRight, Scale,
-  Loader2, AlertCircle, Edit3, Flame, Tag
+  Loader2, AlertCircle, Edit3, Flame, Tag, Heart
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
@@ -239,6 +239,22 @@ export default function RecipesPage() {
     }
   }
 
+  async function toggleFavorite(recipe: any) {
+    const newStatus = !recipe.is_favorite;
+    
+    // Optimistic UI update
+    setSelectedRecipe({ ...recipe, is_favorite: newStatus });
+    setRecipes(recipes.map(r => r.id === recipe.id ? { ...r, is_favorite: newStatus } : r));
+
+    const { error } = await supabase.from('recipes').update({ is_favorite: newStatus }).eq('id', recipe.id);
+    if (error) {
+      // Revert if error
+      setSelectedRecipe({ ...recipe, is_favorite: !newStatus });
+      setRecipes(recipes.map(r => r.id === recipe.id ? { ...r, is_favorite: !newStatus } : r));
+      alert("Fehler beim Speichern des Favoriten.");
+    }
+  }
+
   const getCaloriesPerPortion = () => {
     if (!selectedRecipe || !recipeIngredients || recipeIngredients.length === 0) return 0;
     
@@ -320,7 +336,10 @@ export default function RecipesPage() {
             <div key={r.id} onClick={() => openRecipeDetails(r)} className="bg-[var(--card)] p-4 rounded-2xl border border-[var(--border)]/5 shadow-sm flex items-center gap-4 ios-active-scale cursor-pointer">
               <div className="w-12 h-12 bg-[var(--primary)]/10 rounded-xl flex items-center justify-center text-[var(--primary)] shrink-0"><ChefHat size={24} /></div>
               <div className="flex-1 min-w-0">
-                <h3 className="font-bold text-[17px] truncate">{r.title}</h3>
+                <h3 className="font-bold text-[17px] truncate flex items-center gap-2">
+                  {r.title}
+                  {r.is_favorite && <Heart size={14} className="fill-pink-500 text-pink-500" />}
+                </h3>
                 <div className="flex gap-2 mt-1 overflow-hidden">
                   <p className="text-[10px] text-[var(--muted-foreground)] font-bold uppercase tracking-tight opacity-60 shrink-0 border-r border-[var(--border)]/20 pr-2">Basis: {r.base_portions || 2} Pers.</p>
                   <p className="text-[10px] text-[var(--primary)] font-bold uppercase tracking-tight truncate">
@@ -510,6 +529,9 @@ export default function RecipesPage() {
                 </div>
               </div>
               <div className="flex gap-2 shrink-0">
+                <button onClick={() => toggleFavorite(selectedRecipe)} className={`w-10 h-10 rounded-full flex items-center justify-center ios-active-scale transition-colors ${selectedRecipe.is_favorite ? 'bg-pink-100/50 text-pink-500' : 'bg-[var(--muted)]/50 text-[var(--muted-foreground)] active:bg-[var(--muted)]'}`}>
+                  <Heart size={18} className={selectedRecipe.is_favorite ? 'fill-pink-500' : ''} />
+                </button>
                 <button onClick={() => startEdit(selectedRecipe)} className="w-10 h-10 rounded-full bg-[var(--muted)]/50 flex items-center justify-center text-[var(--muted-foreground)] active:bg-[var(--muted)]"><Edit3 size={18} /></button>
                 <button onClick={() => deleteRecipe(selectedRecipe.id)} className="w-10 h-10 rounded-full bg-red-100/50 flex items-center justify-center text-red-500 active:bg-red-100"><Trash2 size={18} /></button>
                 <button onClick={() => setSelectedRecipe(null)} className="w-10 h-10 rounded-full bg-[var(--muted)]/50 flex items-center justify-center text-[var(--muted-foreground)]"><X size={18} /></button>
