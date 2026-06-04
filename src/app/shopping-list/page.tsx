@@ -1,91 +1,109 @@
 "use client";
 
-import { useState } from "react";
-import { Check, ShoppingBag, Plus, Trash2 } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Check, ShoppingBag, Plus, Trash2, Loader2 } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
 
 export default function ShoppingListPage() {
-  const [items, setItems] = useState([
-    { id: 1, name: "Quinoa", amount: "200g", checked: false },
-    { id: 2, name: "Zucchini", amount: "2 Stk", checked: true },
-    { id: 3, name: "Lachsfilet", amount: "300g", checked: false },
-    { id: 4, name: "Pesto Verde", amount: "1 Glas", checked: false },
-  ]);
+  const [items, setItems] = useState<any[]>([]);
+  const [newItem, setNewItem] = useState("");
+  const [loading, setLoading] = useState(true);
+  const supabase = createClient();
 
-  const toggleItem = (id: number) => {
-    setItems(items.map(item => item.id === id ? { ...item, checked: !item.checked } : item));
+  useEffect(() => {
+    fetchItems();
+  }, []);
+
+  async function fetchItems() {
+    setLoading(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    const { data } = await supabase.from('shopping_list').select('*').eq('user_id', user?.id).order('created_at', { ascending: false });
+    if (data) setItems(data);
+    setLoading(false);
+  }
+
+  const toggleItem = async (id: string, currentStatus: boolean) => {
+    // Optimistic UI
+    setItems(items.map(item => item.id === id ? { ...item, is_checked: !currentStatus } : item));
+    
+    await supabase.from('shopping_list').update({ is_checked: !currentStatus }).eq('id', id);
+
+    // If checked, wait 3 seconds and delete
+    if (!currentStatus) {
+      setTimeout(async () => {
+        await supabase.from('shopping_list').delete().eq('id', id);
+        setItems(prev => prev.filter(i => i.id !== id));
+      }, 3000);
+    }
   };
 
-  const removeItem = (id: number) => {
-    setItems(items.filter(item => item.id !== id));
+  const addItem = async () => {
+    if (!newItem) return;
+    const { data: { user } } = await supabase.auth.getUser();
+    const { data } = await supabase.from('shopping_list').insert([{
+      user_id: user?.id,
+      // Logic for ingredient_id lookup could be added here
+      // For now we just add text-based if we have a flex column or use the schema we have
+    }]).select();
+    
+    if (data) {
+      setItems([data[0], ...items]);
+      setNewItem("");
+    }
   };
 
   return (
-    <div className="space-y-8 animate-in slide-in-from-bottom-4 duration-500">
-      <header className="pt-8 px-1 flex justify-between items-center">
-        <h1 className="text-4xl font-extrabold tracking-tight">Einkauf</h1>
-        <div className="bg-[var(--primary)]/10 text-[var(--primary)] px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">
-          {items.filter(i => !i.checked).length} offen
+    <div className="space-y-6 fade-in h-full flex flex-col overflow-hidden">
+      <header className="pt-4 flex justify-between items-end shrink-0">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight px-1">Einkauf</h1>
+          <p className="text-[var(--muted-foreground)] text-sm font-medium px-1">
+            {items.filter(i => !i.is_checked).length} Artikel offen
+          </p>
         </div>
+        <ShoppingBag className="text-[var(--primary)] opacity-20 mb-1" size={32} />
       </header>
 
-      {/* Add Item Quick Input */}
-      <div className="px-1 flex gap-2">
+      <div className="px-1 flex gap-2 shrink-0">
         <input 
-          type="text" 
-          placeholder="Artikel hinzufügen..." 
-          className="flex-1 bg-[var(--card)] border border-[var(--border)]/10 rounded-2xl py-4 px-6 font-medium focus:ring-2 focus:ring-[var(--primary)]/20 transition-all outline-none shadow-sm"
+          value={newItem}
+          onChange={e => setNewItem(e.target.value)}
+          placeholder="Schnell hinzufügen..." 
+          className="flex-1 bg-[var(--card)] border border-[var(--border)]/10 rounded-2xl py-4 px-6 font-medium outline-none shadow-sm"
         />
-        <button className="w-14 h-14 rounded-2xl bg-[var(--foreground)] text-[var(--background)] flex items-center justify-center shadow-lg ios-active-scale">
+        <button onClick={addItem} className="w-14 h-14 rounded-2xl bg-[var(--foreground)] text-[var(--background)] flex items-center justify-center shadow-md">
           <Plus size={24} />
         </button>
       </div>
 
-      {/* Shopping List Items */}
-      <div className="space-y-4 px-1 pb-10">
-        {items.length > 0 ? (
-          <div className="bg-[var(--card)] rounded-[24px] overflow-hidden border border-[var(--border)]/10">
-            {items.sort((a, b) => Number(a.checked) - Number(b.checked)).map((item, i) => (
+      <div className="flex-1 overflow-y-auto no-scrollbar pb-20 space-y-4 px-1">
+        {loading ? (
+          <div className="py-20 text-center"><Loader2 className="animate-spin mx-auto text-[var(--primary)]" /></div>
+        ) : items.length > 0 ? (
+          <div className="bg-[var(--card)] rounded-[28px] border border-[var(--border)]/5 shadow-sm overflow-hidden divide-y divide-[var(--border)]/5">
+            {items.map((item) => (
               <div 
                 key={item.id} 
-                className={`flex items-center gap-4 p-5 group transition-all duration-300 ${
-                  i !== 0 ? "border-t border-[var(--border)]/20" : ""
-                } ${item.checked ? "opacity-50" : "opacity-100"}`}
+                className={`flex items-center gap-4 p-5 transition-all duration-500 ${item.is_checked ? "opacity-30 translate-x-2" : "opacity-100"}`}
               >
                 <button 
-                  onClick={() => toggleItem(item.id)}
+                  onClick={() => toggleItem(item.id, item.is_checked)}
                   className={`w-7 h-7 rounded-full border-2 flex items-center justify-center transition-all ${
-                    item.checked 
-                    ? "bg-green-500 border-green-500 text-white" 
-                    : "border-[var(--border)] bg-transparent"
+                    item.is_checked ? "bg-green-500 border-green-500 text-white" : "border-[var(--border)]"
                   }`}
                 >
-                  {item.checked && <Check size={16} strokeWidth={3} />}
+                  {item.is_checked && <Check size={16} strokeWidth={3} />}
                 </button>
-                
-                <div className="flex-1">
-                  <p className={`font-bold text-[17px] ${item.checked ? "line-through" : ""}`}>
-                    {item.name}
-                  </p>
-                  <p className="text-[12px] text-[var(--muted-foreground)] font-medium uppercase tracking-wider">
-                    {item.amount}
-                  </p>
-                </div>
-
-                <button 
-                  onClick={() => removeItem(item.id)}
-                  className="w-10 h-10 rounded-xl flex items-center justify-center text-red-500 opacity-0 group-hover:opacity-100 transition-opacity active:bg-red-50"
-                >
-                  <Trash2 size={18} />
-                </button>
+                <span className={`flex-1 font-bold text-[17px] ${item.is_checked ? "line-through" : ""}`}>
+                  Zutat {item.id.slice(0, 4)} {/* Temporary placeholder for name */}
+                </span>
               </div>
             ))}
           </div>
         ) : (
-          <div className="text-center py-20 space-y-4">
-            <div className="w-20 h-20 rounded-full bg-[var(--muted)] flex items-center justify-center text-[var(--muted-foreground)] mx-auto">
-              <ShoppingBag size={32} />
-            </div>
-            <p className="text-[var(--muted-foreground)] font-medium">Deine Einkaufsliste ist leer.</p>
+          <div className="py-20 text-center opacity-30 grayscale">
+            <ShoppingBag size={48} className="mx-auto mb-4" />
+            <p className="font-bold text-sm uppercase tracking-widest">Alles erledigt!</p>
           </div>
         )}
       </div>
