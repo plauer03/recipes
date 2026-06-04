@@ -34,14 +34,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="de" suppressHydrationWarning>
+    <html lang="de" suppressHydrationWarning className="h-full">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased flex justify-center`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased flex justify-center h-full bg-black`}
       >
         <Providers>
-          <div className="w-full max-w-[450px] min-h-screen bg-[var(--background)] shadow-2xl flex flex-col relative overflow-hidden">
-            <main className="flex-grow p-4 pb-28">
-              {children}
+          <div className="w-full max-w-[450px] h-full bg-[var(--background)] flex flex-col relative overflow-hidden shadow-2xl">
+            <main className="flex-1 relative overflow-hidden">
+              <div className="absolute inset-0 overflow-y-auto no-scrollbar p-4 pb-32">
+                {children}
+              </div>
             </main>
             <BottomNav />
           </div>
