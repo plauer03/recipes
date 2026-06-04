@@ -1,14 +1,10 @@
-import { createClient } from "@/lib/supabase/server";
 import { Sparkles, ChefHat, Flame, ShoppingBag, ChevronRight } from "lucide-react";
 
 export default async function Dashboard() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-
   return (
     <div className="space-y-8 fade-in h-full overflow-hidden flex flex-col">
       <header className="pt-6 shrink-0">
-        <h1 className="text-4xl font-extrabold tracking-tight">Moin {user?.email?.split('@')[0]}!</h1>
+        <h1 className="text-4xl font-extrabold tracking-tight">Guten Appetit!</h1>
         <p className="text-[var(--muted-foreground)] font-medium">Was kochen wir heute?</p>
       </header>
 

@@ -1,18 +1,53 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { useTheme } from "next-themes";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { 
   User, Mail, Settings, LogOut, 
   ChevronRight, Moon, ShieldCheck,
-  Bell, Heart, HelpCircle
+  Plus, X, Apple
 } from "lucide-react";
 
 export default function ProfilePage() {
   const { theme, setTheme } = useTheme();
   const supabase = createClient();
   const router = useRouter();
+  
+  const [profile, setProfile] = useState<any>(null);
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [isManagingIngredients, setIsManagingIngredients] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  // Ingredients management state
+  const [ingredients, setIngredients] = useState<any[]>([]);
+  const [newIngName, setNewIngName] = useState("");
+  const [newIngCals, setNewIngCals] = useState("");
+
+  useEffect(() => {
+    fetchProfile();
+    fetchIngredients();
+  }, []);
+
+  async function fetchProfile() {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single();
+      if (data) {
+        setProfile(data);
+        setNewName(data.name || "");
+      } else {
+        setProfile({ email: user.email });
+      }
+    }
+  }
+
+  async function fetchIngredients() {
+    const { data } = await supabase.from('ingredients').select('*').order('name');
+    if (data) setIngredients(data);
+  }
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -20,67 +55,72 @@ export default function ProfilePage() {
     router.refresh();
   };
 
-  const sections = [
-    {
-      title: "Konto",
-      items: [
-        { icon: User, label: "Profil bearbeiten", color: "text-blue-500", bg: "bg-blue-100 dark:bg-blue-900/30" },
-        { icon: ShieldCheck, label: "Sicherheit", color: "text-green-500", bg: "bg-green-100 dark:bg-green-900/30" },
-      ]
-    },
-    {
-      title: "App",
-      items: [
-        { icon: Bell, label: "Mitteilungen", color: "text-red-500", bg: "bg-red-100 dark:bg-red-900/30" },
-        { icon: Heart, label: "Favoriten", color: "text-pink-500", bg: "bg-pink-100 dark:bg-pink-900/30" },
-      ]
+  async function saveProfile() {
+    setLoading(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { error } = await supabase.from('profiles').upsert({
+        id: user.id,
+        name: newName,
+      });
+      if (!error) {
+        setIsEditingProfile(false);
+        fetchProfile();
+      }
     }
-  ];
+    setLoading(false);
+  }
+
+  async function addIngredient() {
+    if (!newIngName) return;
+    const { data: { user } } = await supabase.auth.getUser();
+    const { error } = await supabase.from('ingredients').insert([{
+      name: newIngName,
+      calories_per_100g: Number(newIngCals) || 0,
+      created_by: user?.id
+    }]);
+    if (!error) {
+      setNewIngName("");
+      setNewIngCals("");
+      fetchIngredients();
+    }
+  }
 
   return (
     <div className="space-y-8 fade-in">
-      <header className="pt-4">
-        <h1 className="text-3xl font-bold tracking-tight px-1">Einstellungen</h1>
+      <header className="pt-4 px-1">
+        <h1 className="text-3xl font-bold tracking-tight">Einstellungen</h1>
       </header>
 
-      {/* User Brief */}
-      <div className="bg-[var(--card)] p-4 rounded-2xl flex items-center gap-4 border border-[var(--border)]/10">
-        <div className="w-16 h-16 rounded-full bg-[var(--primary)] flex items-center justify-center text-white text-2xl font-bold">
-          P
+      {/* User Profile Card */}
+      <div 
+        onClick={() => setIsEditingProfile(true)}
+        className="bg-[var(--card)] p-4 rounded-2xl flex items-center gap-4 border border-[var(--border)]/10 shadow-sm ios-active-scale cursor-pointer"
+      >
+        <div className="w-16 h-16 rounded-full bg-[var(--primary)] flex items-center justify-center text-white text-2xl font-bold uppercase">
+          {profile?.name?.[0] || profile?.email?.[0] || "?"}
         </div>
         <div className="flex-1 min-w-0">
-          <h2 className="text-xl font-bold truncate">Pascal</h2>
-          <p className="text-[var(--muted-foreground)] text-sm truncate">pascal@example.com</p>
+          <h2 className="text-xl font-bold truncate">{profile?.name || "Benutzername festlegen"}</h2>
+          <p className="text-[var(--muted-foreground)] text-sm truncate">{profile?.email || "E-Mail wird geladen..."}</p>
         </div>
         <ChevronRight size={20} className="text-[var(--muted-foreground)] opacity-30" />
       </div>
 
       <div className="space-y-6">
-        {sections.map((section) => (
-          <div key={section.title} className="space-y-2">
-            <h3 className="text-[11px] font-bold text-[var(--muted-foreground)] uppercase tracking-widest px-4">{section.title}</h3>
-            <div className="bg-[var(--card)] rounded-2xl overflow-hidden border border-[var(--border)]/10">
-              {section.items.map((item, i) => (
-                <button 
-                  key={item.label}
-                  className={`w-full flex items-center gap-4 p-4 ios-active-scale transition-colors hover:bg-[var(--muted)]/20 ${
-                    i !== 0 ? "border-t border-[var(--border)]/20" : ""
-                  }`}
-                >
-                  <div className={`w-8 h-8 rounded-lg ${item.bg} ${item.color} flex items-center justify-center`}>
-                    <item.icon size={18} />
-                  </div>
-                  <span className="flex-1 text-left font-semibold">{item.label}</span>
-                  <ChevronRight size={18} className="text-[var(--muted-foreground)] opacity-30" />
-                </button>
-              ))}
-            </div>
-          </div>
-        ))}
-
         <div className="space-y-2">
-          <h3 className="text-[11px] font-bold text-[var(--muted-foreground)] uppercase tracking-widest px-4">Anzeige</h3>
-          <div className="bg-[var(--card)] rounded-2xl overflow-hidden border border-[var(--border)]/10">
+          <h3 className="text-[11px] font-bold text-[var(--muted-foreground)] uppercase tracking-widest px-4">Management</h3>
+          <div className="bg-[var(--card)] rounded-2xl overflow-hidden border border-[var(--border)]/10 shadow-sm">
+            <button 
+              onClick={() => setIsManagingIngredients(true)}
+              className="w-full flex items-center gap-4 p-4 ios-active-scale border-b border-[var(--border)]/10"
+            >
+              <div className="w-8 h-8 rounded-lg bg-orange-100 dark:bg-orange-900/30 text-orange-600 flex items-center justify-center">
+                <Apple size={18} />
+              </div>
+              <span className="flex-1 text-left font-semibold">Zutaten verwalten</span>
+              <ChevronRight size={18} className="text-[var(--muted-foreground)] opacity-30" />
+            </button>
             <div className="flex items-center gap-4 p-4">
               <div className="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 flex items-center justify-center">
                 <Moon size={18} />
@@ -98,12 +138,77 @@ export default function ProfilePage() {
 
         <button 
           onClick={handleLogout}
-          className="w-full bg-[var(--card)] rounded-2xl p-4 flex items-center gap-4 ios-active-scale border border-[var(--border)]/10 text-red-500 font-bold justify-center transition-colors hover:bg-red-50 dark:hover:bg-red-900/10"
+          className="w-full bg-[var(--card)] rounded-2xl p-4 flex items-center gap-4 ios-active-scale border border-[var(--border)]/10 text-red-500 font-bold justify-center shadow-sm"
         >
           <LogOut size={18} />
           Abmelden
         </button>
       </div>
+
+      {/* Edit Profile Modal */}
+      {isEditingProfile && (
+        <div className="fixed inset-0 z-[100] flex items-end justify-center">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setIsEditingProfile(false)} />
+          <div className="relative w-full max-w-[450px] bg-[var(--background)] rounded-t-[32px] p-6 h-[50vh] flex flex-col gap-6 fade-in shadow-2xl">
+            <div className="w-10 h-1.5 bg-[var(--muted)] rounded-full mx-auto" />
+            <h2 className="text-2xl font-bold">Profil bearbeiten</h2>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-[11px] font-bold text-[var(--muted-foreground)] uppercase tracking-widest px-1">Anzeigename</label>
+                <input 
+                  value={newName}
+                  onChange={e => setNewName(e.target.value)}
+                  className="w-full bg-[var(--card)] p-4 rounded-2xl outline-none font-bold text-lg" 
+                  placeholder="Dein Name"
+                />
+              </div>
+              <button onClick={saveProfile} className="w-full bg-[var(--primary)] text-white py-4 rounded-2xl font-bold text-lg shadow-lg">Speichern</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Ingredients Management Modal */}
+      {isManagingIngredients && (
+        <div className="fixed inset-0 z-[100] flex items-end justify-center">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setIsManagingIngredients(false)} />
+          <div className="relative w-full max-w-[450px] bg-[var(--background)] rounded-t-[32px] p-6 h-[90vh] flex flex-col gap-6 fade-in shadow-2xl overflow-hidden">
+            <div className="w-10 h-1.5 bg-[var(--muted)] rounded-full mx-auto shrink-0" />
+            <div className="flex justify-between items-center shrink-0">
+              <h2 className="text-2xl font-bold">Zutaten Datenbank</h2>
+              <button onClick={() => setIsManagingIngredients(false)} className="text-[var(--primary)] font-bold">Fertig</button>
+            </div>
+
+            <div className="space-y-4 shrink-0">
+              <div className="flex gap-2">
+                <input 
+                  value={newIngName}
+                  onChange={e => setNewIngName(e.target.value)}
+                  placeholder="Zutat Name"
+                  className="flex-1 bg-[var(--card)] p-4 rounded-2xl outline-none font-bold text-sm shadow-sm"
+                />
+                <input 
+                  type="number"
+                  value={newIngCals}
+                  onChange={e => setNewIngCals(e.target.value)}
+                  placeholder="kcal/100g"
+                  className="w-24 bg-[var(--card)] p-4 rounded-2xl outline-none font-bold text-sm shadow-sm"
+                />
+                <button onClick={addIngredient} className="bg-[var(--primary)] text-white w-14 h-14 rounded-2xl flex items-center justify-center shadow-md shrink-0"><Plus /></button>
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto no-scrollbar space-y-2 pb-10">
+              {ingredients.map((ing) => (
+                <div key={ing.id} className="bg-[var(--card)] p-4 rounded-2xl flex justify-between items-center border border-[var(--border)]/5">
+                  <span className="font-bold">{ing.name}</span>
+                  <span className="text-sm text-[var(--muted-foreground)] font-bold">{ing.calories_per_100g} kcal / 100g</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
