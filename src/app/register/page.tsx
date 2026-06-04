@@ -4,9 +4,9 @@ import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Mail, Lock, ChevronRight, Apple, AlertCircle } from "lucide-react";
+import { Mail, Lock, ChevronRight, Apple, AlertCircle, User } from "lucide-react";
 
-export default function LoginPage() {
+export default function RegisterPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -14,22 +14,24 @@ export default function LoginPage() {
   const supabase = createClient();
   const router = useRouter();
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
 
-    const { error } = await supabase.auth.signInWithPassword({
+    const { error } = await supabase.auth.signUp({
       email,
       password,
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
+      },
     });
 
     if (error) {
       setError(error.message);
       setLoading(false);
     } else {
-      router.push("/");
-      router.refresh();
+      router.push("/login?message=Check your email to confirm your registration");
     }
   };
 
@@ -37,10 +39,10 @@ export default function LoginPage() {
     <div className="min-h-screen flex flex-col justify-center px-4 space-y-12 animate-in fade-in duration-700">
       <header className="text-center space-y-2">
         <div className="w-20 h-20 bg-[var(--primary)] rounded-[22px] mx-auto flex items-center justify-center text-white shadow-xl shadow-[var(--primary)]/20 mb-6">
-          <Apple size={40} />
+          <User size={40} />
         </div>
-        <h1 className="text-4xl font-extrabold tracking-tight">Willkommen</h1>
-        <p className="text-[var(--muted-foreground)] font-medium">Melde dich an, um fortzufahren</p>
+        <h1 className="text-4xl font-extrabold tracking-tight">Konto erstellen</h1>
+        <p className="text-[var(--muted-foreground)] font-medium">Starte jetzt mit deinem Rezept-Manager</p>
       </header>
 
       {error && (
@@ -50,7 +52,7 @@ export default function LoginPage() {
         </div>
       )}
 
-      <form className="space-y-4" onSubmit={handleLogin}>
+      <form className="space-y-4" onSubmit={handleRegister}>
         <div className="space-y-2">
           <label className="text-xs font-bold text-[var(--muted-foreground)] uppercase tracking-widest px-1">E-Mail</label>
           <div className="relative">
@@ -74,8 +76,9 @@ export default function LoginPage() {
               type="password" 
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••" 
+              placeholder="Min. 6 Zeichen" 
               required
+              minLength={6}
               className="w-full bg-[var(--card)] border border-[var(--border)]/10 rounded-2xl py-4 pl-12 pr-4 font-medium outline-none focus:ring-2 focus:ring-[var(--primary)]/20 transition-all shadow-sm"
             />
           </div>
@@ -89,14 +92,14 @@ export default function LoginPage() {
           {loading ? (
             <div className="w-6 h-6 border-3 border-white/30 border-t-white rounded-full animate-spin" />
           ) : (
-            <>Anmelden <ChevronRight size={20} /></>
+            <>Registrieren <ChevronRight size={20} /></>
           )}
         </button>
       </form>
 
       <footer className="text-center space-y-4">
         <p className="text-[var(--muted-foreground)] font-medium text-sm">
-          Noch kein Konto? <Link href="/register" className="text-[var(--primary)] font-bold">Jetzt registrieren</Link>
+          Bereits ein Konto? <Link href="/login" className="text-[var(--primary)] font-bold">Jetzt anmelden</Link>
         </p>
       </footer>
     </div>
