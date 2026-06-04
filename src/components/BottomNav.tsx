@@ -2,20 +2,21 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, UtensilsCrossed, ShoppingCart, User } from "lucide-react";
+import { Home, Search, BookOpen, ShoppingBag, User } from "lucide-react";
 
 const BottomNav = () => {
   const pathname = usePathname();
 
   const navItems = [
-    { name: "Home", href: "/", icon: Home },
-    { name: "Rezepte", href: "/recipes", icon: UtensilsCrossed },
-    { name: "Liste", href: "/shopping-list", icon: ShoppingCart },
+    { name: "Heute", href: "/", icon: Home },
+    { name: "Suchen", href: "/search", icon: Search },
+    { name: "Rezepte", href: "/recipes", icon: BookOpen },
+    { name: "Einkauf", href: "/shopping-list", icon: ShoppingBag },
     { name: "Profil", href: "/profile", icon: User },
   ];
 
   return (
-    <nav className="fixed bottom-0 w-full max-w-[450px] h-[65px] bg-[var(--card)] border-t border-[var(--border)] flex justify-around items-center pb-2 z-20">
+    <nav className="fixed bottom-0 w-full max-w-[450px] h-[84px] glass border-t border-[var(--border)] flex justify-around items-start pt-2 px-2 z-50">
       {navItems.map((item) => {
         const Icon = item.icon;
         const isActive = pathname === item.href;
@@ -23,12 +24,12 @@ const BottomNav = () => {
           <Link
             key={item.name}
             href={item.href}
-            className={`flex flex-col items-center justify-center flex-1 gap-1 transition-colors ${
-              isActive ? "text-[var(--primary)] font-bold" : "text-[var(--muted-foreground)]"
+            className={`flex flex-col items-center justify-center flex-1 gap-1 transition-colors active:opacity-50 ${
+              isActive ? "text-[var(--primary)]" : "text-[var(--muted-foreground)]"
             }`}
           >
-            <Icon size={20} strokeWidth={isActive ? 2.5 : 2} />
-            <span className="text-[10px] uppercase tracking-wider">{item.name}</span>
+            <Icon size={24} strokeWidth={isActive ? 2.5 : 2} />
+            <span className="text-[10px] font-medium">{item.name}</span>
           </Link>
         );
       })}
