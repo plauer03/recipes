@@ -31,6 +31,7 @@ export default function RecipesPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedRecipe, setSelectedRecipe] = useState<any>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const supabase = createClient();
 
   // List State
@@ -58,6 +59,11 @@ export default function RecipesPage() {
   const units = ["g", "ml", "EL", "TL", "Stk"];
 
   useEffect(() => {
+    const fetchUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) setCurrentUserId(user.id);
+    };
+    fetchUser();
     fetchRecipes();
     fetchAvailableIngredients();
   }, []);
@@ -76,7 +82,11 @@ export default function RecipesPage() {
 
   async function fetchRecipes() {
     setLoading(true);
-    const { data } = await supabase.from('recipes').select('*').order('created_at', { ascending: false });
+    const { data } = await supabase
+      .from('recipes')
+      .select('*, profiles:created_by(name)')
+      .order('created_at', { ascending: false });
+    
     if (data) setRecipes(data);
     setLoading(false);
   }
@@ -427,7 +437,7 @@ export default function RecipesPage() {
                   </div>
                   <button onClick={confirmIngredient} disabled={!ingAmount} className="text-[var(--primary)] font-bold px-2 ios-active-scale">Übernehmen</button>
                 </div>
-                <div className="space-y-6 flex-1">
+                <div className="space-y-6 flex-1 flex flex-col justify-between">
                   <div className="space-y-2">
                     <label className="text-[10px] font-bold text-[var(--muted-foreground)] uppercase tracking-widest px-1">Menge & Einheit</label>
                     <div className="flex gap-2 h-14">
@@ -435,6 +445,13 @@ export default function RecipesPage() {
                       <select value={ingUnit} onChange={e => setIngUnit(e.target.value)} className="w-24 bg-[var(--card)] px-2 rounded-2xl outline-none font-bold appearance-none text-center shadow-sm border border-[var(--border)]/5">{units.map(u => <option key={u} value={u}>{u}</option>)}</select>
                     </div>
                   </div>
+                  <button 
+                    onClick={confirmIngredient} 
+                    disabled={!ingAmount} 
+                    className="w-full bg-[var(--foreground)] text-[var(--background)] py-5 rounded-[24px] font-bold text-lg shadow-lg ios-active-scale mb-10 flex items-center justify-center gap-2"
+                  >
+                    <Plus size={20} /> Zutat hinzufügen
+                  </button>
                 </div>
               </div>
             )}
@@ -445,6 +462,7 @@ export default function RecipesPage() {
       {selectedRecipe && (
         <RecipeDetailModal 
           recipe={selectedRecipe} 
+          currentUserId={currentUserId}
           onClose={() => setSelectedRecipe(null)} 
           onEdit={startEdit}
           onDelete={deleteRecipe}

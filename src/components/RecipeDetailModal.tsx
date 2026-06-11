@@ -10,6 +10,7 @@ import { createClient } from "@/lib/supabase/client";
 
 interface RecipeDetailModalProps {
   recipe: any;
+  currentUserId?: string | null;
   onClose: () => void;
   onEdit?: (recipe: any) => void;
   onDelete?: (id: string) => void;
@@ -18,11 +19,14 @@ interface RecipeDetailModalProps {
 
 export default function RecipeDetailModal({ 
   recipe, 
+  currentUserId,
   onClose, 
   onEdit, 
   onDelete,
   onToggleFavorite 
 }: RecipeDetailModalProps) {
+  const isOwner = currentUserId === recipe.created_by;
+  const authorName = recipe.profiles?.name || "Unbekannt";
   const [portions, setPortions] = useState(recipe.base_portions || 1);
   const [recipeIngredients, setRecipeIngredients] = useState<any[]>([]);
   const [isCooking, setIsCooking] = useState(false);
@@ -91,11 +95,14 @@ export default function RecipeDetailModal({
         <div className="flex justify-between items-start shrink-0">
           <div className="flex-1 min-w-0 pr-4">
             <h2 className="text-2xl font-bold truncate pr-2">{recipe.title}</h2>
-            {recipeIngredients.length > 0 && (
-              <div className="flex items-center gap-1.5 mt-1 text-[var(--primary)] font-bold text-xs bg-[var(--primary)]/10 w-fit px-2.5 py-1 rounded-full whitespace-nowrap">
-                <Flame size={12} /> {getCaloriesPerPortion()} kcal / Port.
-              </div>
-            )}
+            <div className="flex flex-wrap items-center gap-2 mt-1">
+              <p className="text-[10px] font-bold text-[var(--muted-foreground)] uppercase tracking-widest bg-[var(--muted)]/30 px-2 py-0.5 rounded-md shrink-0">von {authorName}</p>
+              {recipeIngredients.length > 0 && (
+                <div className="flex items-center gap-1.5 text-[var(--primary)] font-bold text-xs bg-[var(--primary)]/10 w-fit px-2.5 py-1 rounded-full whitespace-nowrap shrink-0">
+                  <Flame size={12} /> {getCaloriesPerPortion()} kcal / Port.
+                </div>
+              )}
+            </div>
           </div>
           <div className="flex gap-2">
             {onToggleFavorite && (
@@ -106,12 +113,12 @@ export default function RecipeDetailModal({
                 <Heart size={18} className={recipe.is_favorite ? 'fill-pink-500' : ''} />
               </button>
             )}
-            {onEdit && (
+            {onEdit && isOwner && (
               <button onClick={() => onEdit(recipe)} className="w-10 h-10 rounded-full bg-[var(--muted)]/50 flex items-center justify-center text-[var(--muted-foreground)] ios-active-scale">
                 <Edit3 size={18} />
               </button>
             )}
-            {onDelete && (
+            {onDelete && isOwner && (
               <button onClick={() => onDelete(recipe.id)} className="w-10 h-10 rounded-full bg-red-100/50 flex items-center justify-center text-red-500 ios-active-scale">
                 <Trash2 size={18} />
               </button>

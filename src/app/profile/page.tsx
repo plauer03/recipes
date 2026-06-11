@@ -22,6 +22,10 @@ export default function ProfilePage() {
   const [newName, setNewName] = useState("");
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [followingCount, setFollowingCount] = useState(0);
+  const [followerCount, setFollowerCount] = useState(0);
+  const [followingList, setFollowingCountList] = useState<any[]>([]);
+  const [isFollowingListOpen, setIsFollowingListOpen] = useState(false);
 
   // Ingredients management state
   const [ingredients, setIngredients] = useState<any[]>([]);
@@ -34,6 +38,7 @@ export default function ProfilePage() {
   useEffect(() => {
     fetchProfile();
     fetchIngredients();
+    fetchSocialStats();
   }, []);
 
   async function fetchProfile() {
@@ -47,6 +52,32 @@ export default function ProfilePage() {
       } else {
         setProfile({ email: user.email, name: "" });
       }
+    }
+  }
+
+  async function fetchSocialStats() {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { count: following } = await supabase.from('follows').select('*', { count: 'exact', head: true }).eq('follower_id', user.id);
+    const { count: followers } = await supabase.from('follows').select('*', { count: 'exact', head: true }).eq('following_id', user.id);
+    
+    setFollowingCount(following || 0);
+    setFollowerCount(followers || 0);
+
+    const { data: list } = await supabase
+      .from('follows')
+      .select('following_id, profiles:following_id(name, avatar_url)')
+      .eq('follower_id', user.id);
+    
+    if (list) setFollowingCountList(list);
+  }
+
+  async function unfollow(id: string) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      await supabase.from('follows').delete().eq('follower_id', user.id).eq('following_id', id);
+      fetchSocialStats();
     }
   }
 
@@ -167,12 +198,12 @@ export default function ProfilePage() {
             <h2 className="text-2xl font-black">{profile?.name || "Name festlegen"}</h2>
             <div className="flex items-center gap-6 justify-center pt-2">
                <div className="flex flex-col">
-                  <span className="text-lg font-black leading-none">0</span>
+                  <span className="text-lg font-black leading-none">{followerCount}</span>
                   <span className="text-[10px] font-bold text-[var(--muted-foreground)] uppercase tracking-widest">Follower</span>
                </div>
                <div className="w-px h-6 bg-[var(--border)] opacity-20" />
-               <div className="flex flex-col">
-                  <span className="text-lg font-black leading-none">0</span>
+               <div className="flex flex-col ios-active-scale cursor-pointer" onClick={() => setIsFollowingListOpen(true)}>
+                  <span className="text-lg font-black leading-none">{followingCount}</span>
                   <span className="text-[10px] font-bold text-[var(--muted-foreground)] uppercase tracking-widest">Gefolgt</span>
                </div>
             </div>
@@ -359,6 +390,37 @@ export default function ProfilePage() {
                 <div className="py-20 text-center opacity-30">
                   <Apple size={48} className="mx-auto mb-2" />
                   <p className="text-sm font-bold uppercase">Keine Einträge</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Following List Modal */}
+      {isFollowingListOpen && (
+        <div className="fixed inset-0 z-[100] flex items-end justify-center px-0">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setIsFollowingListOpen(false)} />
+          <div className="relative w-full max-w-[450px] bg-[var(--background)] rounded-t-[32px] p-6 h-[90dvh] flex flex-col gap-6 fade-in shadow-2xl overflow-hidden">
+            <div className="w-10 h-1.5 bg-[var(--muted)] rounded-full mx-auto shrink-0" />
+            <div className="flex justify-between items-center shrink-0">
+              <h2 className="text-2xl font-bold">Folge ich</h2>
+              <button onClick={() => setIsFollowingListOpen(false)} className="text-[var(--primary)] font-bold">Fertig</button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto no-scrollbar space-y-2 pb-10">
+              {followingList.length > 0 ? followingList.map((f) => (
+                <div key={f.following_id} className="bg-[var(--card)] p-4 rounded-2xl flex justify-between items-center border border-[var(--border)]/5 shadow-sm">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-[var(--primary)]/10 flex items-center justify-center overflow-hidden shrink-0">
+                      {f.profiles?.avatar_url ? <img src={f.profiles.avatar_url} className="w-full h-full object-cover" /> : f.profiles?.name?.[0]}
+                    </div>
+                    <span className="font-bold">{f.profiles?.name}</span>
+                  </div>
+                  <button onClick={() => unfollow(f.following_id)} className="text-red-500 font-bold text-xs uppercase bg-red-50 dark:bg-red-950/30 px-3 py-2 rounded-xl active:scale-95 transition-transform">Entfolgen</button>
+                </div>
+              )) : (
+                <div className="py-20 text-center opacity-30">
+                  <p className="text-sm font-bold uppercase">Du folgst noch niemandem</p>
                 </div>
               )}
             </div>
