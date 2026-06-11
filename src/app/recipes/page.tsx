@@ -102,18 +102,27 @@ export default function RecipesPage() {
 
     setIsSearchingExternal(true);
     try {
+      // Use the direct URL provided by the user
       const res = await fetch(`https://www.teitge.de/wp-json/food-api/v1/foods?search=${encodeURIComponent(query)}`);
       const data = await res.json();
+      
+      let items: any[] = [];
       if (data && typeof data === 'object') {
-        const items = Object.values(data);
-        const mapped = items.map((p: any) => ({
-          id: `ext-${p.id}`,
-          name: `${p.name}${p.subname ? ` (${p.subname})` : ""}`,
-          calories_per_100g: Math.round(p["Energie (kcal)"] || 0),
-          isExternal: true
-        })).filter((p: any) => p.calories_per_100g > 0);
-        setExternalResults(mapped);
+        items = Object.values(data);
       }
+
+      if (items.length === 0) {
+        // Fallback or broader search
+      }
+
+      const mapped = items.map((p: any) => ({
+        id: `ext-${p.id}`,
+        name: `${p.name}${p.subname ? ` (${p.subname})` : ""}`,
+        calories_per_100g: Math.round(p["Energie (kcal)"] || 0),
+        isExternal: true
+      })).filter((p: any) => p.calories_per_100g > 0);
+      
+      setExternalResults(mapped);
     } catch (err) {
       console.error(err);
     } finally {

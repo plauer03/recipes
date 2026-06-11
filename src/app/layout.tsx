@@ -25,7 +25,10 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#007AFF",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#F2F2F7" },
+    { media: "(prefers-color-scheme: dark)", color: "#000000" },
+  ],
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
@@ -39,14 +42,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="de" suppressHydrationWarning className="h-full">
+    <html lang="de" suppressHydrationWarning className="h-full overflow-hidden">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased flex justify-center h-full bg-[var(--background)]`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased flex justify-center h-full bg-black`}
       >
         <Providers>
           <div className="w-full max-w-[450px] h-full bg-[var(--background)] flex flex-col relative overflow-hidden shadow-2xl">
-            <main className="flex-1 relative overflow-hidden">
-              <div className="absolute inset-0 overflow-y-auto no-scrollbar p-4 pb-32 pt-[env(safe-area-inset-top)]">
+            <main className="flex-1 relative overflow-hidden pt-[env(safe-area-inset-top)]">
+              <div className="absolute inset-0 overflow-y-auto no-scrollbar p-4 pb-32">
                 {children}
               </div>
             </main>

@@ -172,8 +172,10 @@ export default function RecipeDetailModal({
         {isCooking && (
           <div className="fixed inset-0 z-[200] bg-[var(--background)] flex flex-col fade-in overflow-hidden">
             <header className="p-6 pb-2 border-b border-[var(--border)]/10 flex justify-between items-center shrink-0">
-              <h2 className="text-2xl font-bold truncate pr-4">{recipe.title}</h2>
-              <button onClick={() => setIsCooking(false)} className="w-10 h-10 rounded-full bg-[var(--muted)]/50 flex items-center justify-center text-[var(--muted-foreground)]"><X size={20} /></button>
+              <div className="flex-1 min-w-0 pr-4">
+                <h2 className="text-2xl font-bold truncate">{recipe.title}</h2>
+              </div>
+              <button onClick={() => setIsCooking(false)} className="text-[var(--primary)] font-bold px-2">Zurück</button>
             </header>
             <div className="flex-1 overflow-y-auto no-scrollbar p-6 pb-20 space-y-8">
               <div className="space-y-4">
