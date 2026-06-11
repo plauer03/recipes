@@ -35,14 +35,15 @@ export default function Dashboard() {
 
   async function fetchData() {
     setLoading(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    setUser(user);
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    setUser(authUser);
 
-    if (user) {
-      // 1. Fetch own recipes & favorites
+    if (authUser) {
+      // 1. Fetch own recipes
       const { data: recs } = await supabase
         .from('recipes')
         .select('*')
+        .eq('created_by', authUser.id)
         .order('created_at', { ascending: false });
       
       if (recs) {
@@ -50,26 +51,31 @@ export default function Dashboard() {
         setFavorites(recs.filter(r => r.is_favorite));
         generateDailyRecommendation(recs);
       }
-// 2. Fetch Feed (own + followed users' recipes)
-const { data: following } = await supabase
-  .from('follows')
-  .select('following_id')
-  .eq('follower_id', user.id);
 
-const idsToShow = [user.id];
-if (following && following.length > 0) {
-  idsToShow.push(...following.map(f => f.following_id));
-}
+      // 2. Fetch following list
+      const { data: following } = await supabase
+        .from('follows')
+        .select('following_id')
+        .eq('follower_id', authUser.id);
+      
+      const idsToShow = [authUser.id];
+      if (following && following.length > 0) {
+        idsToShow.push(...following.map(f => f.following_id));
+      }
 
-const { data: feedRecs } = await supabase
-  .from('recipes')
-  .select('*, profiles:created_by(name, avatar_url)')
-  .in('created_by', idsToShow)
-  .order('created_at', { ascending: false })
-  .limit(15);
-
-if (feedRecs) setFeed(feedRecs);
-
+      // 3. Fetch Feed with Profile Join
+      const { data: feedRecs, error: feedErr } = await supabase
+        .from('recipes')
+        .select('*, profiles:created_by(name, avatar_url)')
+        .in('created_by', idsToShow)
+        .order('created_at', { ascending: false })
+        .limit(15);
+      
+      if (feedRecs) {
+        setFeed(feedRecs);
+      } else if (feedErr) {
+        console.error("Feed error:", feedErr);
+      }
     }
     setLoading(false);
   }
@@ -113,7 +119,7 @@ if (feedRecs) setFeed(feedRecs);
     setFavorites(prev => {
       if (newStatus) {
         const fullRecipe = recipes.find(r => r.id === recipe.id);
-        return [{ ...fullRecipe, is_favorite: true }, ...prev];
+        return fullRecipe ? [{ ...fullRecipe, is_favorite: true }, ...prev] : prev;
       }
       return prev.filter(r => r.id !== recipe.id);
     });
@@ -122,7 +128,7 @@ if (feedRecs) setFeed(feedRecs);
 
   return (
     <div className="space-y-6 fade-in h-full flex flex-col overflow-hidden">
-      <header className="pt-4 shrink-0 px-1 flex justify-between items-center">
+      <header className="pt-4 shrink-0 px-1">
         <h1 className="text-4xl font-extrabold tracking-tight">Guten Appetit!</h1>
       </header>
 
@@ -243,6 +249,7 @@ if (feedRecs) setFeed(feedRecs);
       {selectedRecipe && (
         <RecipeDetailModal 
           recipe={selectedRecipe} 
+          currentUserId={user?.id}
           onClose={() => setSelectedRecipe(null)}
           onToggleFavorite={toggleFavorite}
         />
