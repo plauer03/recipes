@@ -63,14 +63,14 @@ export default function RecipesPage() {
   }, []);
 
   useEffect(() => {
+    if (ingSearchQuery.length <= 2) {
+      setExternalResults([]);
+      setIsSearchingExternal(false);
+      return;
+    }
     const delayDebounceFn = setTimeout(() => {
-      if (ingSearchQuery.length > 2) {
-        searchExternalIngredients(ingSearchQuery);
-      } else {
-        setExternalResults([]);
-      }
-    }, 500);
-
+      searchExternalIngredients(ingSearchQuery);
+    }, 400);
     return () => clearTimeout(delayDebounceFn);
   }, [ingSearchQuery]);
 
@@ -92,17 +92,21 @@ export default function RecipesPage() {
 
     setIsSearchingExternal(true);
     try {
-      const res = await fetch(`https://world.openfoodfacts.org/cgi/search.pl?search_terms=${query}&search_simple=1&action=process&json=1&page_size=10`);
+      const res = await fetch(`https://de.world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query)}&search_simple=1&action=process&json=1&page_size=15&fields=code,product_name_de,product_name,nutriments,brands`);
       const data = await res.json();
       if (data.products) {
         const mapped = data.products
-          .filter((p: any) => p.nutriments && p.nutriments['energy-kcal_100g'])
-          .map((p: any) => ({
-            id: `ext-${p.code}`,
-            name: p.product_name_de || p.product_name || "Unbekanntes Produkt",
-            calories_per_100g: Math.round(p.nutriments['energy-kcal_100g']),
-            isExternal: true
-          }));
+          .filter((p: any) => p.nutriments && (p.nutriments['energy-kcal_100g'] !== undefined))
+          .map((p: any) => {
+            const name = p.product_name_de || p.product_name || "Unbekannt";
+            const brand = p.brands ? ` (${p.brands.split(',')[0]})` : "";
+            return {
+              id: `ext-${p.code}`,
+              name: `${name}${brand}`,
+              calories_per_100g: Math.round(p.nutriments['energy-kcal_100g']),
+              isExternal: true
+            };
+          });
         setExternalResults(mapped);
       }
     } catch (err) {
@@ -250,9 +254,23 @@ export default function RecipesPage() {
 
   async function toggleFavorite(recipe: any) {
     const newStatus = !recipe.is_favorite;
+    
+    // UI Feedback immediately
     setSelectedRecipe({ ...recipe, is_favorite: newStatus });
-    setRecipes(recipes.map(r => r.id === recipe.id ? { ...r, is_favorite: newStatus } : r));
-    await supabase.from('recipes').update({ is_favorite: newStatus }).eq('id', recipe.id);
+    setRecipes(prev => prev.map(r => r.id === recipe.id ? { ...r, is_favorite: newStatus } : r));
+
+    const { error } = await supabase
+      .from('recipes')
+      .update({ is_favorite: newStatus })
+      .eq('id', recipe.id);
+
+    if (error) {
+      console.error("Favorite save error:", error);
+      // Revert UI if it fails
+      setSelectedRecipe({ ...recipe, is_favorite: !newStatus });
+      setRecipes(prev => prev.map(r => r.id === recipe.id ? { ...r, is_favorite: !newStatus } : r));
+      alert("Fehler: Favorit konnte nicht gespeichert werden.");
+    }
   }
 
   async function addToShoppingList() {
