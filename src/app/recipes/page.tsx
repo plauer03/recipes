@@ -339,14 +339,15 @@ export default function RecipesPage() {
       {isAdding && (
         <div className="fixed inset-0 z-[100] flex items-end justify-center px-0">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => !saving && setIsAdding(false)} />
-          <div className="relative w-full max-w-[450px] bg-[var(--background)] rounded-t-[32px] p-6 h-[94vh] flex flex-col gap-6 fade-in shadow-2xl overflow-hidden">
+          <div className="relative w-full max-w-[450px] bg-[var(--background)] rounded-t-[32px] p-6 h-[90dvh] flex flex-col gap-6 fade-in shadow-2xl overflow-hidden">
             <div className="w-10 h-1.5 bg-[var(--muted)] rounded-full mx-auto shrink-0" />
             <div className="flex justify-between items-center shrink-0">
               <h2 className="text-2xl font-bold tracking-tight">{editingId ? "Bearbeiten" : "Neues Rezept"}</h2>
               <button onClick={handleSave} disabled={!title || saving} className="text-[var(--primary)] font-bold px-2 active:opacity-50 transition-opacity">Speichern</button>
             </div>
+
             {error && <div className="bg-red-50 text-red-600 p-4 rounded-2xl flex items-center gap-2 text-xs font-bold shrink-0 shadow-sm border border-red-100"><AlertCircle size={16} /> {error}</div>}
-            <div className="flex-1 overflow-y-auto no-scrollbar space-y-6 pb-32">
+            <div className="flex-1 overflow-y-auto no-scrollbar space-y-6 pb-20">
               <div className="space-y-4">
                 <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Titel" className="w-full bg-[var(--card)] p-4 rounded-2xl border border-[var(--border)]/10 outline-none font-bold text-xl shadow-sm" />
                 <div className="bg-[var(--card)] p-4 rounded-2xl flex justify-between items-center border border-[var(--border)]/10 shadow-sm">
@@ -380,16 +381,16 @@ export default function RecipesPage() {
                 <h3 className="text-[10px] font-bold text-[var(--muted-foreground)] uppercase tracking-widest px-2">Zubereitung</h3>
                 <textarea value={instructions} onChange={e => setInstructions(e.target.value)} placeholder="Schritte..." rows={6} className="w-full bg-[var(--card)] p-4 rounded-2xl border border-[var(--border)]/10 outline-none font-medium shadow-sm resize-none leading-relaxed" />
               </div>
-              <button onClick={handleSave} disabled={!title || saving} className="w-full bg-[var(--primary)] text-white py-5 rounded-[24px] font-bold text-lg shadow-xl flex items-center justify-center ios-active-scale disabled:opacity-30">{saving ? <Loader2 className="animate-spin" /> : "Speichern"}</button>
             </div>
           </div>
         </div>
       )}
+{/* Ingredient Picker Modal */}
+{isSelectingIngredient && (
+  <div className="fixed inset-0 z-[150] flex items-end justify-center px-0">
+    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setIsSelectingIngredient(false)} />
+    <div className="relative w-full max-w-[450px] bg-[var(--background)] rounded-t-[32px] p-6 h-[90dvh] flex flex-col gap-6 fade-in shadow-2xl overflow-hidden">
 
-      {isSelectingIngredient && (
-        <div className="fixed inset-0 z-[150] flex items-end justify-center px-0">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setIsSelectingIngredient(false)} />
-          <div className="relative w-full max-w-[450px] bg-[var(--background)] rounded-t-[32px] p-6 h-[85vh] flex flex-col gap-6 fade-in shadow-2xl overflow-hidden">
             <div className="w-10 h-1.5 bg-[var(--muted)] rounded-full mx-auto shrink-0" />
             {!currentPickingIng ? (
               <>
@@ -419,7 +420,13 @@ export default function RecipesPage() {
               </>
             ) : (
               <div className="space-y-6 flex-1 flex flex-col overflow-hidden px-1">
-                <div className="flex items-center gap-3 shrink-0"><button onClick={() => setCurrentPickingIng(null)} className="p-2 -ml-2 text-[var(--primary)] font-bold">Zurück</button><h2 className="text-xl font-bold truncate">{currentPickingIng.name}</h2></div>
+                <div className="flex items-center justify-between shrink-0">
+                  <div className="flex items-center gap-3">
+                    <button onClick={() => setCurrentPickingIng(null)} className="p-2 -ml-2 text-[var(--primary)] font-bold">Zurück</button>
+                    <h2 className="text-xl font-bold truncate">{currentPickingIng.name}</h2>
+                  </div>
+                  <button onClick={confirmIngredient} disabled={!ingAmount} className="text-[var(--primary)] font-bold px-2 ios-active-scale">Übernehmen</button>
+                </div>
                 <div className="space-y-6 flex-1">
                   <div className="space-y-2">
                     <label className="text-[10px] font-bold text-[var(--muted-foreground)] uppercase tracking-widest px-1">Menge & Einheit</label>
@@ -428,7 +435,6 @@ export default function RecipesPage() {
                       <select value={ingUnit} onChange={e => setIngUnit(e.target.value)} className="w-24 bg-[var(--card)] px-2 rounded-2xl outline-none font-bold appearance-none text-center shadow-sm border border-[var(--border)]/5">{units.map(u => <option key={u} value={u}>{u}</option>)}</select>
                     </div>
                   </div>
-                  <button onClick={confirmIngredient} disabled={!ingAmount} className="w-full bg-[var(--foreground)] text-[var(--background)] py-4 rounded-2xl font-bold text-lg shadow-lg ios-active-scale">Übernehmen</button>
                 </div>
               </div>
             )}

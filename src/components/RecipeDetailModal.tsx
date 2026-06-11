@@ -85,15 +85,15 @@ export default function RecipeDetailModal({
   return (
     <div className="fixed inset-0 z-[100] flex items-end justify-center px-0">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-[450px] bg-[var(--background)] rounded-t-[32px] p-6 h-[88vh] flex flex-col gap-6 fade-in shadow-2xl overflow-hidden">
+      <div className="relative w-full max-w-[450px] bg-[var(--background)] rounded-t-[32px] p-6 h-[90dvh] flex flex-col gap-6 fade-in shadow-2xl overflow-hidden">
         <div className="w-10 h-1.5 bg-[var(--muted)] rounded-full mx-auto shrink-0" />
         
         <div className="flex justify-between items-start shrink-0">
           <div className="flex-1 min-w-0 pr-4">
             <h2 className="text-2xl font-bold truncate pr-2">{recipe.title}</h2>
             {recipeIngredients.length > 0 && (
-              <div className="flex items-center gap-1.5 mt-1 text-[var(--primary)] font-bold text-sm bg-[var(--primary)]/10 w-fit px-2.5 py-0.5 rounded-full">
-                <Flame size={14} /> {getCaloriesPerPortion()} kcal / Port.
+              <div className="flex items-center gap-1.5 mt-1 text-[var(--primary)] font-bold text-xs bg-[var(--primary)]/10 w-fit px-2.5 py-1 rounded-full whitespace-nowrap">
+                <Flame size={12} /> {getCaloriesPerPortion()} kcal / Port.
               </div>
             )}
           </div>

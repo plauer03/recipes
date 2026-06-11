@@ -202,11 +202,13 @@ export default function ProfilePage() {
       {isEditingProfile && (
         <div className="fixed inset-0 z-[100] flex items-end justify-center">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setIsEditingProfile(false)} />
-          <div className="relative w-full max-w-[450px] bg-[var(--background)] rounded-t-[32px] p-6 h-[50vh] flex flex-col gap-6 fade-in shadow-2xl">
+          <div className="relative w-full max-w-[450px] bg-[var(--background)] rounded-t-[32px] p-6 h-[90dvh] flex flex-col gap-6 fade-in shadow-2xl">
             <div className="w-10 h-1.5 bg-[var(--muted)] rounded-full mx-auto shrink-0" />
             <div className="flex justify-between items-center shrink-0">
               <h2 className="text-2xl font-bold">Profil</h2>
-              <button onClick={() => setIsEditingProfile(false)} className="text-[var(--primary)] font-bold">Fertig</button>
+              <button onClick={saveProfile} disabled={loading} className="text-[var(--primary)] font-bold px-2 ios-active-scale">
+                {loading ? <Loader2 className="animate-spin" size={18} /> : "Speichern"}
+              </button>
             </div>
             <div className="space-y-4 flex-1">
               <div className="space-y-2">
@@ -218,9 +220,6 @@ export default function ProfilePage() {
                   placeholder="Dein Name"
                 />
               </div>
-              <button onClick={saveProfile} disabled={loading} className="w-full bg-[var(--primary)] text-white py-4 rounded-2xl font-bold text-lg shadow-lg flex items-center justify-center ios-active-scale">
-                {loading ? <Loader2 className="animate-spin" /> : "Speichern"}
-              </button>
             </div>
           </div>
         </div>
@@ -230,7 +229,7 @@ export default function ProfilePage() {
       {isManagingIngredients && (
         <div className="fixed inset-0 z-[100] flex items-end justify-center px-0">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setIsManagingIngredients(false)} />
-          <div className="relative w-full max-w-[450px] bg-[var(--background)] rounded-t-[32px] p-6 h-[92vh] flex flex-col gap-6 fade-in shadow-2xl overflow-hidden">
+          <div className="relative w-full max-w-[450px] bg-[var(--background)] rounded-t-[32px] p-6 h-[90dvh] flex flex-col gap-6 fade-in shadow-2xl overflow-hidden">
             <div className="w-10 h-1.5 bg-[var(--muted)] rounded-full mx-auto shrink-0" />
             <div className="flex justify-between items-center shrink-0">
               <h2 className="text-2xl font-bold">Zutaten</h2>
