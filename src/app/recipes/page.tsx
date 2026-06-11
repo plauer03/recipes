@@ -463,21 +463,38 @@ export default function RecipesPage() {
                 </div>
 
                 <div className="flex-1 overflow-y-auto no-scrollbar space-y-2 pb-10 px-1">
+                  {/* Local Results */}
                   {filteredIngredients.map(ing => (
                     <button key={ing.id} onClick={() => handlePickIngredient(ing)} className="w-full bg-[var(--card)] p-4 rounded-2xl flex justify-between items-center border border-[var(--border)]/5 ios-active-scale text-left">
-                      <span className="font-bold">{ing.name}</span>
+                      <div className="flex flex-col">
+                        <span className="font-bold">{ing.name}</span>
+                        <span className="text-[10px] text-[var(--muted-foreground)] font-bold uppercase">Deine Datenbank</span>
+                      </div>
                       <ChevronRight size={18} className="opacity-20" />
                     </button>
                   ))}
-                  {availableIngredients.length === 0 && (
-                    <div className="py-20 text-center opacity-40 px-6">
-                      <p className="font-bold">Keine Zutaten vorhanden.</p>
-                      <p className="text-sm mt-2 font-medium">Lege zuerst Zutaten in den Einstellungen an.</p>
+
+                  {/* External Results */}
+                  {externalResults.map(ing => (
+                    <button key={ing.id} onClick={() => handlePickIngredient(ing)} className="w-full bg-blue-50/30 dark:bg-blue-900/10 p-4 rounded-2xl flex justify-between items-center border border-blue-100/20 dark:border-blue-800/20 ios-active-scale text-left">
+                      <div className="flex flex-col">
+                        <span className="font-bold">{ing.name}</span>
+                        <span className="text-[10px] text-blue-500 font-bold uppercase">OpenFoodFacts • {ing.calories_per_100g} kcal</span>
+                      </div>
+                      <ChevronRight size={18} className="text-blue-500 opacity-40" />
+                    </button>
+                  ))}
+
+                  {isSearchingExternal && (
+                    <div className="py-4 text-center">
+                      <Loader2 className="animate-spin mx-auto text-blue-500" size={20} />
                     </div>
                   )}
-                  {availableIngredients.length > 0 && filteredIngredients.length === 0 && (
-                    <div className="py-10 text-center opacity-40 px-6">
-                      <p className="font-bold">Keine Zutat gefunden.</p>
+
+                  {availableIngredients.length === 0 && externalResults.length === 0 && !isSearchingExternal && (
+                    <div className="py-20 text-center opacity-40 px-6">
+                      <p className="font-bold">Keine Zutaten vorhanden.</p>
+                      <p className="text-sm mt-2 font-medium">Suche nach Produkten oder lege eigene Zutaten an.</p>
                     </div>
                   )}
                 </div>
@@ -568,6 +585,17 @@ export default function RecipesPage() {
               <div className="space-y-3">
                 <h3 className="text-[10px] font-bold text-[var(--muted-foreground)] uppercase tracking-widest px-2">Anleitung</h3>
                 <div className="p-5 bg-[var(--card)] rounded-[24px] text-[16px] font-medium leading-relaxed shadow-sm border border-[var(--border)]/5 whitespace-pre-wrap">{selectedRecipe.instructions || "Keine Anleitung hinterlegt."}</div>
+              </div>
+
+              <button onClick={addToShoppingList} className="w-full bg-[var(--foreground)] text-[var(--background)] py-5 rounded-[24px] font-bold flex items-center justify-center gap-3 shadow-lg ios-active-scale mt-4 shrink-0"><ShoppingBag size={22} /> Auf Einkaufsliste setzen</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+space-pre-wrap">{selectedRecipe.instructions || "Keine Anleitung hinterlegt."}</div>
               </div>
 
               <button onClick={addToShoppingList} className="w-full bg-[var(--foreground)] text-[var(--background)] py-5 rounded-[24px] font-bold flex items-center justify-center gap-3 shadow-lg ios-active-scale mt-4 shrink-0"><ShoppingBag size={22} /> Auf Einkaufsliste setzen</button>

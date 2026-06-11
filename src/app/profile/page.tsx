@@ -27,6 +27,8 @@ export default function ProfilePage() {
   const [newIngCals, setNewIngCals] = useState("");
   const [newIngUnitType, setNewIngUnitType] = useState("g");
 
+  const [useExternalDb, setUseExternalDb] = useState(false);
+
   useEffect(() => {
     fetchProfile();
     fetchIngredients();
@@ -39,11 +41,21 @@ export default function ProfilePage() {
       if (data) {
         setProfile({ ...data, email: user.email });
         setNewName(data.name || "");
+        setUseExternalDb(data.use_external_db || false);
       } else {
         setProfile({ email: user.email, name: "" });
       }
     }
   }
+
+  const toggleExternalDb = async () => {
+    const newVal = !useExternalDb;
+    setUseExternalDb(newVal);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      await supabase.from('profiles').update({ use_external_db: newVal }).eq('id', user.id);
+    }
+  };
 
   async function fetchIngredients() {
     const { data } = await supabase.from('ingredients').select('*').order('name');
@@ -233,6 +245,23 @@ export default function ProfilePage() {
                     </span>
                   </div>
                   <button onClick={() => deleteIngredient(ing.id)} className="text-red-500/30 active:text-red-500 p-2 transition-colors">
+                    <X size={18} />
+                  </button>
+                </div>
+              )) : (
+                <div className="py-20 text-center opacity-30">
+                  <Apple size={48} className="mx-auto mb-2" />
+                  <p className="text-sm font-bold uppercase">Keine Einträge</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+            <button onClick={() => deleteIngredient(ing.id)} className="text-red-500/30 active:text-red-500 p-2 transition-colors">
                     <X size={18} />
                   </button>
                 </div>
