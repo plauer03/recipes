@@ -20,7 +20,7 @@ const BottomNav = () => {
   ];
 
   return (
-    <nav className="fixed bottom-0 w-full max-w-[450px] h-[calc(84px+env(safe-area-inset-bottom))] glass border-t border-[var(--border)] flex justify-around items-start pt-2 px-2 z-50 pb-[env(safe-area-inset-bottom)]">
+    <nav className="fixed bottom-0 w-full max-w-[450px] h-[calc(65px+env(safe-area-inset-bottom))] glass border-t border-[var(--border)] flex justify-around items-center px-2 z-50 pb-[env(safe-area-inset-bottom)]">
       {navItems.map((item) => {
         const Icon = item.icon;
         const isActive = pathname === item.href;
@@ -32,7 +32,7 @@ const BottomNav = () => {
               isActive ? "text-[var(--primary)]" : "text-[var(--muted-foreground)]"
             }`}
           >
-            <Icon size={24} strokeWidth={isActive ? 2.5 : 2} />
+            <Icon size={22} strokeWidth={isActive ? 2.5 : 2} />
             <span className="text-[10px] font-medium">{item.name}</span>
           </Link>
         );
