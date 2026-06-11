@@ -122,12 +122,10 @@ export default function RecipeDetailModal({
               <button onClick={() => onDelete(recipe.id)} className="w-10 h-10 rounded-full bg-red-100/50 flex items-center justify-center text-red-500 ios-active-scale">
                 <Trash2 size={18} />
               </button>
-            )}
-            <button onClick={onClose} className="w-10 h-10 rounded-full bg-[var(--muted)]/50 flex items-center justify-center text-[var(--muted-foreground)] ios-active-scale">
-              <X size={18} />
-            </button>
-          </div>
-        </div>
+              )}
+              </div>
+              </div>
+              </div>
 
         <div className="flex-1 overflow-y-auto no-scrollbar space-y-6 pb-24 px-1">
           <div className="bg-[var(--card)] p-4 rounded-2xl flex justify-between items-center border border-[var(--border)]/5 shadow-sm">

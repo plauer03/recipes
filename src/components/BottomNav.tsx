@@ -20,7 +20,7 @@ const BottomNav = () => {
   ];
 
   return (
-    <nav className="fixed bottom-0 w-full max-w-[450px] h-[84px] glass border-t border-[var(--border)] flex justify-around items-start pt-2 px-2 z-50">
+    <nav className="fixed bottom-0 w-full max-w-[450px] h-[calc(84px+env(safe-area-inset-bottom))] glass border-t border-[var(--border)] flex justify-around items-start pt-2 px-2 z-50 pb-[env(safe-area-inset-bottom)]">
       {navItems.map((item) => {
         const Icon = item.icon;
         const isActive = pathname === item.href;

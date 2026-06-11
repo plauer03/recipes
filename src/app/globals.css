@@ -32,8 +32,9 @@
 html, body {
   height: 100%;
   width: 100%;
-  overflow: hidden; /* Prevent body scroll */
-  position: fixed; /* Extra precaution for iOS */
+  overflow: hidden; 
+  position: fixed;
+  background-color: var(--background);
 }
 
 * {
