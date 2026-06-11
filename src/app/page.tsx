@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Sparkles, ChefHat, Flame, ShoppingBag, ChevronRight, Heart, X, Dices, Loader2, Clock, UserPlus, Search } from "lucide-react";
+import { Sparkles, ChefHat, Flame, ShoppingBag, ChevronRight, Heart, X, Dices, Loader2, Clock } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import RecipeDetailModal from "@/components/RecipeDetailModal";
 
@@ -26,13 +26,6 @@ export default function Dashboard() {
   
   const [selectedRecipe, setSelectedRecipe] = useState<any>(null);
   const [dailyRecommendation, setDailyRecommendation] = useState<any>(null);
-
-  // Social State
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const [emailQuery, setEmailQuery] = useState("");
-  const [searchResult, setSearchResult] = useState<any>(null);
-  const [isSearching, setIsSearching] = useState(false);
-  const [isFollowing, setIsFollowing] = useState(false);
   
   const supabase = createClient();
 
@@ -59,7 +52,6 @@ export default function Dashboard() {
       }
 
       // 2. Fetch Feed (followed users' recipes)
-      // First get following list
       const { data: following } = await supabase
         .from('follows')
         .select('following_id')
@@ -113,54 +105,16 @@ export default function Dashboard() {
     }, 800);
   };
 
-  const handleSearchFriend = async () => {
-    if (!emailQuery.includes('@')) return;
-    setIsSearching(true);
-    setSearchResult(null);
-    setIsFollowing(false);
-
-    // This is tricky because Supabase Auth emails aren't public. 
-    // We assume profiles has an email or users are identified by name.
-    // Let's assume for now searching by exactly matching the name or a future email column in profiles.
-    // To make it work now, let's search in profiles (assuming name or if we add email there).
-    const { data: found } = await supabase
-      .from('profiles')
-      .select('*')
-      .ilike('name', `%${emailQuery}%`)
-      .limit(1)
-      .maybeSingle();
-
-    if (found) {
-      setSearchResult(found);
-      const { data: follow } = await supabase
-        .from('follows')
-        .select('*')
-        .eq('follower_id', user.id)
-        .eq('following_id', found.id)
-        .maybeSingle();
-      if (follow) setIsFollowing(true);
-    } else {
-      setSearchResult({ notFound: true });
-    }
-    setIsSearching(false);
-  };
-
-  const toggleFollow = async () => {
-    if (!searchResult || searchResult.notFound) return;
-    if (isFollowing) {
-      await supabase.from('follows').delete().eq('follower_id', user.id).eq('following_id', searchResult.id);
-      setIsFollowing(false);
-    } else {
-      await supabase.from('follows').insert({ follower_id: user.id, following_id: searchResult.id });
-      setIsFollowing(true);
-    }
-    fetchData(); // Refresh feed
-  };
-
   async function toggleFavorite(recipe: any) {
     const newStatus = !recipe.is_favorite;
     setRecipes(prev => prev.map(r => r.id === recipe.id ? { ...r, is_favorite: newStatus } : r));
-    setFavorites(prev => newStatus ? [{ ...recipe, is_favorite: true }, ...prev] : prev.filter(r => r.id !== recipe.id));
+    setFavorites(prev => {
+      if (newStatus) {
+        const fullRecipe = recipes.find(r => r.id === recipe.id);
+        return [{ ...fullRecipe, is_favorite: true }, ...prev];
+      }
+      return prev.filter(r => r.id !== recipe.id);
+    });
     await supabase.from('recipes').update({ is_favorite: newStatus }).eq('id', recipe.id);
   }
 
@@ -168,12 +122,6 @@ export default function Dashboard() {
     <div className="space-y-6 fade-in h-full flex flex-col overflow-hidden">
       <header className="pt-4 shrink-0 px-1 flex justify-between items-center">
         <h1 className="text-4xl font-extrabold tracking-tight">Guten Appetit!</h1>
-        <button 
-          onClick={() => setIsSearchOpen(true)}
-          className="w-10 h-10 rounded-full bg-[var(--card)] border border-[var(--border)]/10 flex items-center justify-center text-[var(--muted-foreground)] ios-active-scale"
-        >
-          <UserPlus size={20} />
-        </button>
       </header>
 
       {/* Daily Recommendation */}
@@ -201,6 +149,22 @@ export default function Dashboard() {
         <div className="flex-1"><h2 className="text-[16px] font-bold">Inspiration finden</h2><p className="text-white/70 text-[11px] font-medium leading-none">Lass den Zufall entscheiden</p></div>
         <ChevronRight size={20} className="opacity-40" />
       </section>
+
+      {/* Simple Stats */}
+      <div className="flex gap-4 shrink-0 px-1">
+        <div className="flex-1 bg-[var(--card)] p-4 rounded-2xl flex items-center gap-3 border border-[var(--border)]/5 shadow-sm">
+          <div className="w-10 h-10 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center text-orange-600">
+            <Flame size={20} />
+          </div>
+          <p className="text-xl font-black">{recipes.length}</p>
+        </div>
+        <div className="flex-1 bg-[var(--card)] p-4 rounded-2xl flex items-center gap-3 border border-[var(--border)]/5 shadow-sm">
+          <div className="w-10 h-10 rounded-full bg-pink-100 dark:bg-pink-900/30 flex items-center justify-center text-pink-600">
+            <Heart size={20} className="fill-pink-600" />
+          </div>
+          <p className="text-xl font-black">{favorites.length}</p>
+        </div>
+      </div>
 
       {/* Feed Section */}
       <section className="space-y-3 flex-1 overflow-hidden flex flex-col min-h-0 pb-4 px-1">
@@ -231,63 +195,12 @@ export default function Dashboard() {
             <div className="p-10 text-center text-[var(--muted-foreground)] space-y-2 grayscale opacity-40">
               <ChefHat size={40} className="mx-auto" />
               <p className="text-xs font-bold uppercase tracking-widest">Noch keine Aktivität</p>
-              <button onClick={() => setIsSearchOpen(true)} className="text-[var(--primary)] text-[10px] font-bold uppercase border border-[var(--primary)]/20 px-3 py-1 rounded-full">Freunde finden</button>
             </div>
           )}
         </div>
       </section>
 
-      {/* Friend Search Modal */}
-      {isSearchOpen && (
-        <div className="fixed inset-0 z-[100] flex items-end justify-center px-0">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setIsSearchOpen(false)} />
-          <div className="relative w-full max-w-[450px] bg-[var(--background)] rounded-t-[32px] p-6 h-[90dvh] flex flex-col gap-6 fade-in shadow-2xl overflow-hidden">
-            <div className="w-10 h-1.5 bg-[var(--muted)] rounded-full mx-auto shrink-0" />
-            <div className="flex justify-between items-center shrink-0">
-              <h2 className="text-2xl font-bold tracking-tight">Freunde finden</h2>
-              <button onClick={() => setIsSearchOpen(false)} className="text-[var(--muted-foreground)]"><X size={20} /></button>
-            </div>
-            
-            <div className="relative shrink-0">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--muted-foreground)]" size={18} />
-              <input 
-                value={emailQuery} 
-                onChange={e => setEmailQuery(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleSearchFriend()}
-                placeholder="Name suchen..." 
-                className="w-full bg-[var(--card)] border border-[var(--border)]/10 rounded-2xl py-4 pl-11 pr-4 font-bold outline-none shadow-sm"
-              />
-            </div>
-
-            <div className="flex-1 overflow-y-auto no-scrollbar pt-4">
-               {isSearching ? (
-                 <div className="text-center py-10"><Loader2 className="animate-spin mx-auto text-[var(--primary)]" /></div>
-               ) : searchResult ? (
-                 searchResult.notFound ? (
-                   <div className="text-center py-10 opacity-40"><p className="font-bold">Niemanden gefunden</p></div>
-                 ) : (
-                   <div className="bg-[var(--card)] p-6 rounded-3xl border border-[var(--border)]/10 flex flex-col items-center gap-4 shadow-sm animate-in fade-in zoom-in-95">
-                      <div className="w-20 h-20 rounded-full bg-[var(--primary)] flex items-center justify-center text-white text-3xl font-black uppercase overflow-hidden">
-                        {searchResult.avatar_url ? <img src={searchResult.avatar_url} className="w-full h-full object-cover" /> : searchResult.name?.[0]}
-                      </div>
-                      <h3 className="text-xl font-black">{searchResult.name}</h3>
-                      <button 
-                        onClick={toggleFollow}
-                        className={`w-full py-4 rounded-2xl font-bold transition-all ios-active-scale ${isFollowing ? 'bg-[var(--muted)]/50 text-[var(--foreground)]' : 'bg-[var(--primary)] text-white shadow-lg'}`}
-                      >
-                        {isFollowing ? 'Entfolgen' : 'Folgen'}
-                      </button>
-                   </div>
-                 )
-               ) : (
-                 <div className="text-center py-20 opacity-20"><UserPlus size={48} className="mx-auto mb-2" /><p className="text-xs font-bold uppercase tracking-widest">Suche nach einem Freund</p></div>
-               )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Inspiration Modal (Ported logic) */}
+      {/* Inspiration Modal */}
       {isInspirationOpen && (
         <div className="fixed inset-0 z-[100] flex items-end justify-center px-0">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setIsInspirationOpen(false)} />
