@@ -50,24 +50,26 @@ export default function Dashboard() {
         setFavorites(recs.filter(r => r.is_favorite));
         generateDailyRecommendation(recs);
       }
+// 2. Fetch Feed (own + followed users' recipes)
+const { data: following } = await supabase
+  .from('follows')
+  .select('following_id')
+  .eq('follower_id', user.id);
 
-      // 2. Fetch Feed (followed users' recipes)
-      const { data: following } = await supabase
-        .from('follows')
-        .select('following_id')
-        .eq('follower_id', user.id);
-      
-      if (following && following.length > 0) {
-        const followingIds = following.map(f => f.following_id);
-        const { data: feedRecs } = await supabase
-          .from('recipes')
-          .select('*, profiles:created_by(name, avatar_url)')
-          .in('created_by', followingIds)
-          .order('created_at', { ascending: false })
-          .limit(10);
-        
-        if (feedRecs) setFeed(feedRecs);
-      }
+const idsToShow = [user.id];
+if (following && following.length > 0) {
+  idsToShow.push(...following.map(f => f.following_id));
+}
+
+const { data: feedRecs } = await supabase
+  .from('recipes')
+  .select('*, profiles:created_by(name, avatar_url)')
+  .in('created_by', idsToShow)
+  .order('created_at', { ascending: false })
+  .limit(15);
+
+if (feedRecs) setFeed(feedRecs);
+
     }
     setLoading(false);
   }
@@ -168,7 +170,7 @@ export default function Dashboard() {
 
       {/* Feed Section */}
       <section className="space-y-3 flex-1 overflow-hidden flex flex-col min-h-0 pb-4 px-1">
-        <h2 className="text-xl font-bold tracking-tight px-1 shrink-0">Neu von Freunden</h2>
+        <h2 className="text-xl font-bold tracking-tight px-1 shrink-0">Aktivität</h2>
         <div className="bg-[var(--card)] rounded-[24px] border border-[var(--border)]/10 shadow-sm overflow-y-auto no-scrollbar flex-1 p-2">
           {loading ? (
             <div className="p-8 text-center"><Loader2 className="animate-spin mx-auto text-[var(--primary)]" /></div>
@@ -176,16 +178,21 @@ export default function Dashboard() {
             <div className="space-y-1">
               {feed.map(item => (
                 <div key={item.id} onClick={() => setSelectedRecipe(item)} className="p-3 rounded-2xl flex items-center gap-4 ios-active-scale cursor-pointer hover:bg-[var(--muted)]/20 transition-colors">
-                  <div className="w-12 h-12 bg-[var(--muted)] rounded-xl flex items-center justify-center overflow-hidden shrink-0 border border-[var(--border)]/5">
+                  <div className="w-12 h-12 bg-[var(--primary)]/5 dark:bg-white/5 rounded-xl flex items-center justify-center overflow-hidden shrink-0 border border-[var(--border)]/5">
                     {item.profiles?.avatar_url ? (
                       <img src={item.profiles.avatar_url} className="w-full h-full object-cover" />
                     ) : (
-                      <ChefHat size={20} className="text-[var(--muted-foreground)]" />
+                      <ChefHat size={20} className="text-[var(--primary)] opacity-40" />
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-bold text-[16px] truncate">{item.title}</h3>
-                    <p className="text-[10px] text-[var(--primary)] font-bold uppercase tracking-tight">von {item.profiles?.name || "Freund"}</p>
+                    <h3 className="font-bold text-[16px] truncate flex items-center gap-2">
+                       {item.title}
+                       {item.created_by === user?.id && <div className="w-1.5 h-1.5 rounded-full bg-[var(--primary)]" />}
+                    </h3>
+                    <p className="text-[10px] text-[var(--muted-foreground)] font-bold uppercase tracking-tight">
+                       {item.created_by === user?.id ? "Von dir" : `von ${item.profiles?.name || "Freund"}`}
+                    </p>
                   </div>
                   <ChevronRight size={16} className="text-[var(--muted-foreground)] opacity-20" />
                 </div>
