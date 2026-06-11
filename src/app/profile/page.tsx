@@ -146,7 +146,7 @@ export default function ProfilePage() {
               </div>
               <div className="flex-1 text-left">
                 <p className="font-semibold">Externe Datenbank</p>
-                <p className="text-[10px] text-[var(--muted-foreground)] font-bold uppercase tracking-tight">OpenFoodFacts API</p>
+                <p className="text-[10px] text-[var(--muted-foreground)] font-bold uppercase tracking-tight">Smarte Lebensmittel-Datenbank</p>
               </div>
               <button 
                 onClick={toggleExternalDb}

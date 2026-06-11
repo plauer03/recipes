@@ -86,29 +86,21 @@ export default function RecipesPage() {
 
     setIsSearchingExternal(true);
     try {
-      // API V2 with a broader search to catch generic items like "Nudeln"
-      const url = `https://world.openfoodfacts.org/api/v2/search?product_name=${encodeURIComponent(query)}&page_size=24&json=true&fields=code,product_name_de,product_name,nutriments,brands,generic_name_de`;
-      
-      const res = await fetch(url);
-      if (!res.ok) throw new Error("API Error");
+      const res = await fetch(`https://www.teitge.de/wp-json/food-api/v1/foods?search=${encodeURIComponent(query)}`);
       const data = await res.json();
       
-      if (data.products) {
-        const mapped = data.products
+      if (data && typeof data === 'object') {
+        // Convert object values to array
+        const items = Object.values(data);
+        const mapped = items
           .map((p: any) => {
-            const name = p.product_name_de || p.generic_name_de || p.product_name || "Unbekannt";
-            const brand = p.brands ? ` (${p.brands.split(',')[0]})` : "";
+            const name = p.name || "Unbekannt";
+            const subname = p.subname ? ` (${p.subname})` : "";
+            const kcal = p["Energie (kcal)"] || 0;
             
-            let kcal = 0;
-            if (p.nutriments) {
-              kcal = p.nutriments['energy-kcal_100g'] || 
-                     p.nutriments['energy-kcal'] || 
-                     Math.round((p.nutriments['energy_100g'] || 0) / 4.184);
-            }
-
             return {
-              id: `ext-${p.code}`,
-              name: `${name}${brand}`,
+              id: `ext-${p.id}`,
+              name: `${name}${subname}`,
               calories_per_100g: Math.round(kcal),
               isExternal: true
             };
@@ -475,7 +467,7 @@ export default function RecipesPage() {
                   ))}
                   {externalResults.map(ing => (
                     <button key={ing.id} onClick={() => handlePickIngredient(ing)} className="w-full bg-blue-50/30 dark:bg-blue-900/10 p-4 rounded-2xl flex justify-between items-center border border-blue-100/20 dark:border-blue-800/20 text-left active:opacity-70">
-                      <div className="flex flex-col"><span className="font-bold">{ing.name}</span><span className="text-[10px] text-blue-500 font-bold uppercase">OpenFoodFacts • {ing.calories_per_100g} kcal</span></div>
+                      <div className="flex flex-col"><span className="font-bold">{ing.name}</span><span className="text-[10px] text-blue-500 font-bold uppercase">Datenbank • {ing.calories_per_100g} kcal</span></div>
                       <ChevronRight size={18} className="text-blue-500 opacity-40" />
                     </button>
                   ))}
