@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Sparkles, ChefHat, Flame, ShoppingBag, ChevronRight, Heart, X, Dices, Loader2 } from "lucide-react";
+import { Sparkles, ChefHat, Flame, ShoppingBag, ChevronRight, Heart, X, Dices, Loader2, Clock } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import RecipeDetailModal from "@/components/RecipeDetailModal";
 
@@ -12,7 +12,6 @@ const AVAILABLE_TAGS = [
 ];
 
 export default function Dashboard() {
-  const [user, setUser] = useState<any>(null);
   const [favorites, setFavorites] = useState<any[]>([]);
   const [recipes, setRecipes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -24,6 +23,7 @@ export default function Dashboard() {
   const [isSpinning, setIsSpinning] = useState(false);
   
   const [selectedRecipe, setSelectedRecipe] = useState<any>(null);
+  const [dailyRecommendation, setDailyRecommendation] = useState<any>(null);
   
   const supabase = createClient();
 
@@ -34,7 +34,6 @@ export default function Dashboard() {
   async function fetchData() {
     setLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
-    setUser(user);
 
     if (user) {
       const { data: recs } = await supabase
@@ -45,10 +44,27 @@ export default function Dashboard() {
       if (recs) {
         setRecipes(recs);
         setFavorites(recs.filter(r => r.is_favorite));
+        generateDailyRecommendation(recs);
       }
     }
     setLoading(false);
   }
+
+  const generateDailyRecommendation = (allRecipes: any[]) => {
+    const hour = new Date().getHours();
+    let type = "Hauptspeise";
+    if (hour >= 5 && hour < 11) type = "Frühstück";
+    else if (hour >= 11 && hour < 15) type = "Hauptspeise";
+    else if (hour >= 15 && hour < 18) type = "Snack";
+    else type = "Hauptspeise";
+
+    const possible = allRecipes.filter(r => r.tags?.includes(type));
+    if (possible.length > 0) {
+      setDailyRecommendation({ recipe: possible[Math.floor(Math.random() * possible.length)], type });
+    } else if (allRecipes.length > 0) {
+      setDailyRecommendation({ recipe: allRecipes[Math.floor(Math.random() * allRecipes.length)], type: "Empfehlung" });
+    }
+  };
 
   const toggleTag = (tag: string) => {
     if (selectedTags.includes(tag)) {
@@ -93,77 +109,79 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6 fade-in h-full flex flex-col overflow-hidden">
-      <header className="pt-4 shrink-0">
-        <h1 className="text-4xl font-extrabold tracking-tight px-1">Guten Appetit!</h1>
-        <p className="text-[var(--muted-foreground)] font-medium px-1">Was kochen wir heute?</p>
+      <header className="pt-4 shrink-0 px-1">
+        <h1 className="text-4xl font-extrabold tracking-tight">Guten Appetit!</h1>
+        <p className="text-[var(--muted-foreground)] font-medium">Dein smarter Feed</p>
       </header>
 
-      <section 
-        onClick={() => setIsInspirationOpen(true)}
-        className="bg-[var(--primary)] text-white p-6 rounded-[28px] shadow-lg ios-active-scale cursor-pointer shrink-0 mx-1"
-      >
-        <div className="flex items-center justify-between">
-          <div className="space-y-1">
-            <h2 className="text-xl font-bold flex items-center gap-2">
-              <Sparkles size={20} className="fill-white" />
-              Inspiration finden
-            </h2>
-            <p className="text-white/80 text-sm font-medium">Lass den Zufall entscheiden</p>
-          </div>
-          <ChevronRight size={24} className="opacity-50" />
+      {/* Daily Recommendation Feed */}
+      <section className="space-y-3 px-1 shrink-0">
+        <div className="flex items-center gap-2 text-[10px] font-bold text-[var(--muted-foreground)] uppercase tracking-widest px-1">
+          <Clock size={12} />
+          {dailyRecommendation?.type || "Empfehlung"} für dich
         </div>
+        {dailyRecommendation ? (
+          <div 
+            onClick={() => setSelectedRecipe(dailyRecommendation.recipe)}
+            className="bg-[var(--card)] p-4 rounded-[28px] border border-[var(--border)]/5 shadow-sm flex items-center gap-4 ios-active-scale cursor-pointer"
+          >
+            <div className="w-16 h-16 bg-[var(--primary)]/10 rounded-2xl flex items-center justify-center text-[var(--primary)] shrink-0">
+              <ChefHat size={32} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="font-bold text-lg truncate">{dailyRecommendation.recipe.title}</h3>
+              <p className="text-xs text-[var(--muted-foreground)] font-medium uppercase tracking-tight opacity-70 truncate">
+                {dailyRecommendation.recipe.tags?.join(' • ')}
+              </p>
+            </div>
+            <ChevronRight size={20} className="text-[var(--muted-foreground)] opacity-20" />
+          </div>
+        ) : (
+          <div className="bg-[var(--card)] p-8 rounded-[28px] text-center border border-dashed border-[var(--border)] opacity-40">
+             <p className="text-xs font-bold uppercase tracking-widest">Lege Rezepte an für deinen Feed</p>
+          </div>
+        )}
       </section>
 
+      {/* Compact Inspiration Trigger */}
+      <section 
+        onClick={() => setIsInspirationOpen(true)}
+        className="bg-[var(--primary)] text-white p-4 rounded-2xl shadow-lg ios-active-scale cursor-pointer shrink-0 mx-1 flex items-center gap-4"
+      >
+        <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center shrink-0">
+          <Sparkles size={20} className="fill-white" />
+        </div>
+        <div className="flex-1">
+          <h2 className="text-[16px] font-bold">Inspiration finden</h2>
+          <p className="text-white/70 text-[11px] font-medium leading-none">Lass den Zufall entscheiden</p>
+        </div>
+        <ChevronRight size={20} className="opacity-40" />
+      </section>
+
+      {/* Simple Stats */}
       <div className="flex gap-4 shrink-0 px-1">
-        <div className="flex-1 bg-[var(--card)] p-4 rounded-[22px] flex items-center gap-3 border border-[var(--border)]/5 shadow-sm">
+        <div className="flex-1 bg-[var(--card)] p-4 rounded-2xl flex items-center gap-3 border border-[var(--border)]/5 shadow-sm">
           <div className="w-10 h-10 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center text-orange-600">
             <Flame size={20} />
           </div>
-          <div className="min-w-0">
-            <p className="text-[10px] font-bold text-[var(--muted-foreground)] uppercase tracking-wider">Rezepte</p>
-            <p className="text-lg font-bold">{recipes.length}</p>
-          </div>
+          <p className="text-xl font-black">{recipes.length}</p>
         </div>
-        <div className="flex-1 bg-[var(--card)] p-4 rounded-[22px] flex items-center gap-3 border border-[var(--border)]/5 shadow-sm">
+        <div className="flex-1 bg-[var(--card)] p-4 rounded-2xl flex items-center gap-3 border border-[var(--border)]/5 shadow-sm">
           <div className="w-10 h-10 rounded-full bg-pink-100 dark:bg-pink-900/30 flex items-center justify-center text-pink-600">
             <Heart size={20} className="fill-pink-600" />
           </div>
-          <div className="min-w-0">
-            <p className="text-[10px] font-bold text-[var(--muted-foreground)] uppercase tracking-wider">Favoriten</p>
-            <p className="text-lg font-bold">{favorites.length}</p>
-          </div>
+          <p className="text-xl font-black">{favorites.length}</p>
         </div>
       </div>
 
+      {/* Feed Placeholder / Friends Feed */}
       <section className="space-y-3 flex-1 overflow-hidden flex flex-col min-h-0 pb-4 px-1">
-        <h2 className="text-xl font-bold tracking-tight px-1 shrink-0">Deine Favoriten</h2>
-        <div className="bg-[var(--card)] rounded-[24px] border border-[var(--border)]/10 shadow-sm overflow-y-auto no-scrollbar flex-1 p-2">
-          {loading ? (
-            <div className="p-8 text-center"><Loader2 className="animate-spin mx-auto text-[var(--primary)]" /></div>
-          ) : favorites.length > 0 ? (
-            <div className="space-y-1">
-              {favorites.map(f => (
-                <div key={f.id} onClick={() => setSelectedRecipe(f)} className="p-3 rounded-2xl flex items-center gap-4 ios-active-scale cursor-pointer hover:bg-[var(--muted)]/20 transition-colors">
-                  <div className="w-12 h-12 bg-pink-100 dark:bg-pink-900/20 rounded-xl flex items-center justify-center text-pink-500 shrink-0 shadow-sm">
-                    <Heart size={20} className="fill-pink-500" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-bold text-[16px] truncate">{f.title}</h3>
-                    <p className="text-[10px] text-[var(--muted-foreground)] font-bold uppercase tracking-tight opacity-80">
-                      {f.tags && f.tags.length > 0 ? f.tags.slice(0, 3).join(' • ') : "Favorit"}
-                    </p>
-                  </div>
-                  <ChevronRight size={16} className="text-[var(--muted-foreground)] opacity-20" />
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="p-10 text-center text-[var(--muted-foreground)]">
-              <Heart size={40} className="mx-auto mb-2 opacity-20" />
-              <p className="text-sm font-medium">Noch keine Favoriten markiert.</p>
-              <p className="text-xs mt-1">Tippe auf das Herz in einem Rezept.</p>
-            </div>
-          )}
+        <h2 className="text-xl font-bold tracking-tight px-1 shrink-0">Aktivität</h2>
+        <div className="bg-[var(--card)] rounded-[24px] border border-[var(--border)]/10 shadow-sm flex-1 flex items-center justify-center p-8 text-center grayscale opacity-30">
+          <div className="space-y-2">
+            <div className="w-12 h-12 bg-[var(--muted)] rounded-full mx-auto" />
+            <p className="text-[10px] font-bold uppercase tracking-widest">Community Feed coming soon</p>
+          </div>
         </div>
       </section>
 
@@ -188,7 +206,7 @@ export default function Dashboard() {
                   <button 
                     key={tag}
                     onClick={() => toggleTag(tag)}
-                    className={`px-3 py-1.5 rounded-full text-xs font-bold transition-colors border ${
+                    className={`px-3 py-1.5 rounded-full text-[13px] font-bold transition-colors border ${
                       selectedTags.includes(tag) 
                         ? "bg-[var(--primary)] text-white border-[var(--primary)] shadow-md" 
                         : "bg-[var(--card)] text-[var(--muted-foreground)] border-[var(--border)]/10"
@@ -207,7 +225,6 @@ export default function Dashboard() {
                     <div className="bg-[var(--card)] p-6 rounded-3xl text-center border border-[var(--border)]/10 shadow-sm">
                       <ChefHat size={40} className="mx-auto mb-2 opacity-20" />
                       <p className="font-bold text-lg">Nichts gefunden</p>
-                      <p className="text-sm text-[var(--muted-foreground)]">Für diese Kombination gibt es noch keine Rezepte.</p>
                     </div>
                   ) : (
                     <div className="bg-[var(--card)] p-5 rounded-3xl border border-[var(--border)]/10 shadow-lg ios-active-scale cursor-pointer" onClick={() => {
@@ -216,13 +233,9 @@ export default function Dashboard() {
                     }}>
                       <div className="w-14 h-14 bg-[var(--primary)]/10 rounded-2xl flex items-center justify-center text-[var(--primary)] mb-4 shrink-0"><ChefHat size={28} /></div>
                       <h3 className="font-bold text-xl mb-1 truncate">{suggestedRecipe.title}</h3>
-                      <p className="text-xs text-[var(--primary)] font-bold uppercase tracking-tight mb-4 truncate">
+                      <p className="text-xs text-[var(--primary)] font-bold uppercase tracking-tight truncate">
                         {suggestedRecipe.tags?.join(' • ')}
                       </p>
-                      <div className="flex items-center gap-2 text-[var(--primary)] font-bold text-xs uppercase tracking-widest">
-                        <span>Details ansehen</span>
-                        <ChevronRight size={14} />
-                      </div>
                     </div>
                   )}
                 </div>

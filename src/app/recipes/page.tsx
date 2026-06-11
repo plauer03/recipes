@@ -268,7 +268,9 @@ export default function RecipesPage() {
 
   const displayedRecipes = recipes.filter(r => {
     const matchesSearch = r.title.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesFilter = activeFilter ? r.tags?.includes(activeFilter) : true;
+    const matchesFilter = activeFilter === 'Favorites' 
+      ? r.is_favorite 
+      : activeFilter ? r.tags?.includes(activeFilter) : true;
     return matchesSearch && matchesFilter;
   });
 
@@ -289,6 +291,17 @@ export default function RecipesPage() {
 
         <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1 px-1">
           <button onClick={() => setActiveFilter(null)} className={`px-4 py-1.5 rounded-full text-sm font-bold whitespace-nowrap transition-colors border ${!activeFilter ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]" : "bg-[var(--card)] text-[var(--muted-foreground)] border-[var(--border)]/10"}`}>Alle</button>
+          <button 
+            onClick={() => setActiveFilter('Favorites')}
+            className={`px-4 py-1.5 rounded-full text-sm font-bold whitespace-nowrap transition-colors border flex items-center gap-1.5 ${
+              activeFilter === 'Favorites' 
+                ? "bg-pink-500 text-white border-pink-500 shadow-sm" 
+                : "bg-[var(--card)] text-pink-500 border-pink-500/20"
+            }`}
+          >
+            <Heart size={14} className={activeFilter === 'Favorites' ? 'fill-white' : 'fill-pink-500'} />
+            Favoriten
+          </button>
           {AVAILABLE_TAGS.map(tag => (
             <button key={tag} onClick={() => setActiveFilter(tag)} className={`px-4 py-1.5 rounded-full text-sm font-bold whitespace-nowrap transition-colors border ${activeFilter === tag ? "bg-[var(--primary)] text-white border-[var(--primary)]" : "bg-[var(--card)] text-[var(--muted-foreground)] border-[var(--border)]/10"}`}>{tag}</button>
           ))}
