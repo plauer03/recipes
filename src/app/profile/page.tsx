@@ -119,7 +119,7 @@ export default function ProfilePage() {
 
       const file = event.target.files[0];
       const fileExt = file.name.split('.').pop();
-      const filePath = `${user.id}-${Math.random()}.${fileExt}`;
+      const filePath = `${user.id}/${Math.random()}.${fileExt}`;
 
       const { error: uploadError } = await supabase.storage
         .from('avatars')
@@ -140,7 +140,7 @@ export default function ProfilePage() {
 
       fetchProfile();
     } catch (error: any) {
-      alert(error.message);
+      alert("Fehler beim Hochladen: " + error.message);
     } finally {
       setUploading(false);
     }
@@ -155,30 +155,12 @@ export default function ProfilePage() {
       <div className="flex-1 overflow-y-auto no-scrollbar pb-20 space-y-6">
         {/* User Profile Card */}
         <div className="bg-[var(--card)] p-6 rounded-[32px] border border-[var(--border)]/10 shadow-sm flex flex-col items-center text-center gap-4 mx-1">
-          <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
-            <div className="w-24 h-24 rounded-full bg-[var(--primary)] flex items-center justify-center text-white text-3xl font-bold uppercase shrink-0 shadow-lg group-active:scale-95 transition-transform overflow-hidden">
-              {profile?.avatar_url ? (
-                <img src={profile.avatar_url} alt="Profile" className="w-full h-full object-cover" />
-              ) : (
-                profile?.name?.[0] || profile?.email?.[0] || "?"
-              )}
-              {uploading && (
-                <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                  <Loader2 className="animate-spin text-white" size={24} />
-                </div>
-              )}
-            </div>
-            <div className="absolute bottom-0 right-0 w-8 h-8 bg-white dark:bg-[var(--card)] rounded-full border border-[var(--border)]/20 shadow-md flex items-center justify-center text-[var(--primary)]">
-              <Camera size={14} />
-            </div>
-            <input 
-              type="file" 
-              ref={fileInputRef} 
-              className="hidden" 
-              accept="image/*" 
-              onChange={handleAvatarUpload}
-              disabled={uploading}
-            />
+          <div className="w-24 h-24 rounded-full bg-[var(--primary)] flex items-center justify-center text-white text-3xl font-bold uppercase shrink-0 shadow-lg overflow-hidden">
+            {profile?.avatar_url ? (
+              <img src={profile.avatar_url} alt="Profile" className="w-full h-full object-cover" />
+            ) : (
+              profile?.name?.[0] || profile?.email?.[0] || "?"
+            )}
           </div>
           
           <div className="space-y-1">
@@ -264,17 +246,51 @@ export default function ProfilePage() {
             <div className="w-10 h-1.5 bg-[var(--muted)] rounded-full mx-auto shrink-0" />
             <div className="flex justify-between items-center shrink-0">
               <h2 className="text-2xl font-bold">Profil</h2>
-              <button onClick={saveProfile} disabled={loading} className="text-[var(--primary)] font-bold px-2 ios-active-scale">
+              <button onClick={saveProfile} disabled={loading || uploading} className="text-[var(--primary)] font-bold px-2 ios-active-scale">
                 {loading ? <Loader2 className="animate-spin" size={18} /> : "Speichern"}
               </button>
             </div>
-            <div className="space-y-4 flex-1">
+            <div className="space-y-8 flex-1 overflow-y-auto no-scrollbar">
+              {/* Avatar Upload inside Edit Modal */}
+              <div className="flex flex-col items-center gap-4">
+                <div className="relative">
+                  <div className="w-24 h-24 rounded-full bg-[var(--muted)] flex items-center justify-center overflow-hidden border-2 border-[var(--border)]/10 shadow-inner">
+                    {profile?.avatar_url ? (
+                      <img src={profile.avatar_url} alt="Profile" className="w-full h-full object-cover" />
+                    ) : (
+                      <User size={40} className="text-[var(--muted-foreground)]" />
+                    )}
+                    {uploading && (
+                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                        <Loader2 className="animate-spin text-white" size={24} />
+                      </div>
+                    )}
+                  </div>
+                  <button 
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploading}
+                    className="absolute bottom-0 right-0 w-8 h-8 bg-[var(--primary)] rounded-full border-2 border-white dark:border-[var(--background)] shadow-lg flex items-center justify-center text-white active:scale-90 transition-transform"
+                  >
+                    <Camera size={14} />
+                  </button>
+                </div>
+                <p className="text-[10px] font-bold text-[var(--muted-foreground)] uppercase tracking-widest">Profilbild ändern</p>
+                <input 
+                  type="file" 
+                  ref={fileInputRef} 
+                  className="hidden" 
+                  accept="image/*" 
+                  onChange={handleAvatarUpload}
+                  disabled={uploading}
+                />
+              </div>
+
               <div className="space-y-2">
                 <label className="text-[11px] font-bold text-[var(--muted-foreground)] uppercase tracking-widest px-1">Anzeigename</label>
                 <input 
                   value={newName}
                   onChange={e => setNewName(e.target.value)}
-                  className="w-full bg-[var(--card)] p-4 rounded-2xl outline-none font-bold text-lg border border-[var(--border)]/5" 
+                  className="w-full bg-[var(--card)] p-4 rounded-2xl outline-none font-bold text-lg border border-[var(--border)]/5 shadow-sm" 
                   placeholder="Dein Name"
                 />
               </div>
