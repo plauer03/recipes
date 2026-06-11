@@ -63,16 +63,66 @@ export default function RecipesPage() {
   }, []);
 
   useEffect(() => {
+    // Immediate clear and stop if too short
     if (ingSearchQuery.length <= 2) {
       setExternalResults([]);
       setIsSearchingExternal(false);
       return;
     }
+
+    // Clear old results while searching for new ones to prevent "stuck" UI
+    setExternalResults([]);
+
     const delayDebounceFn = setTimeout(() => {
       searchExternalIngredients(ingSearchQuery);
-    }, 400);
+    }, 350); // Faster response
+
     return () => clearTimeout(delayDebounceFn);
   }, [ingSearchQuery]);
+
+  async function searchExternalIngredients(query: string) {
+    const { data: profile } = await supabase.from('profiles').select('use_external_db').single();
+    if (!profile?.use_external_db) return;
+
+    setIsSearchingExternal(true);
+    try {
+      // API V2 with a broader search to catch generic items like "Nudeln"
+      const url = `https://world.openfoodfacts.org/api/v2/search?product_name=${encodeURIComponent(query)}&page_size=24&json=true&fields=code,product_name_de,product_name,nutriments,brands,generic_name_de`;
+      
+      const res = await fetch(url);
+      if (!res.ok) throw new Error("API Error");
+      const data = await res.json();
+      
+      if (data.products) {
+        const mapped = data.products
+          .map((p: any) => {
+            const name = p.product_name_de || p.generic_name_de || p.product_name || "Unbekannt";
+            const brand = p.brands ? ` (${p.brands.split(',')[0]})` : "";
+            
+            let kcal = 0;
+            if (p.nutriments) {
+              kcal = p.nutriments['energy-kcal_100g'] || 
+                     p.nutriments['energy-kcal'] || 
+                     Math.round((p.nutriments['energy_100g'] || 0) / 4.184);
+            }
+
+            return {
+              id: `ext-${p.code}`,
+              name: `${name}${brand}`,
+              calories_per_100g: Math.round(kcal),
+              isExternal: true
+            };
+          })
+          .filter((p: any) => p.calories_per_100g > 0);
+        
+        setExternalResults(mapped);
+      }
+    } catch (err) {
+      console.error("Search error:", err);
+    } finally {
+      setIsSearchingExternal(false);
+    }
+  }
 
   async function fetchRecipes() {
     setLoading(true);
@@ -84,37 +134,6 @@ export default function RecipesPage() {
   async function fetchAvailableIngredients() {
     const { data } = await supabase.from('ingredients').select('*').order('name');
     if (data) setAvailableIngredients(data);
-  }
-
-  async function searchExternalIngredients(query: string) {
-    const { data: profile } = await supabase.from('profiles').select('use_external_db').single();
-    if (!profile?.use_external_db) return;
-
-    setIsSearchingExternal(true);
-    try {
-      // Use standard world subdomain but filter for German names and common brands
-      const res = await fetch(`https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query)}&search_simple=1&action=process&json=1&page_size=20&fields=code,product_name_de,product_name,nutriments,brands`);
-      const data = await res.json();
-      if (data.products) {
-        const mapped = data.products
-          .filter((p: any) => p.nutriments && (p.nutriments['energy-kcal_100g'] !== undefined))
-          .map((p: any) => {
-            const name = p.product_name_de || p.product_name || "Unbekannt";
-            const brand = p.brands ? ` (${p.brands.split(',')[0]})` : "";
-            return {
-              id: `ext-${p.code}`,
-              name: `${name}${brand}`,
-              calories_per_100g: Math.round(p.nutriments['energy-kcal_100g']),
-              isExternal: true
-            };
-          });
-        setExternalResults(mapped);
-      }
-    } catch (err) {
-      console.error("Search error:", err);
-    } finally {
-      setIsSearchingExternal(false);
-    }
   }
 
   const handlePickIngredient = (ing: any) => {
