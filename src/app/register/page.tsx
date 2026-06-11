@@ -31,13 +31,13 @@ export default function RegisterPage() {
       setError(error.message);
       setLoading(false);
     } else {
-      router.push("/login?message=Check your email to confirm your registration");
+      router.push("/login?message=Prüfe deine E-Mails zur Bestätigung.");
     }
   };
 
   return (
-    <div className="min-h-screen flex flex-col justify-center px-4 space-y-12 animate-in fade-in duration-700">
-      <header className="text-center space-y-2">
+    <div className="h-full flex flex-col justify-center px-4 space-y-12 animate-in fade-in duration-700 overflow-hidden">
+      <header className="text-center space-y-2 shrink-0">
         <div className="w-20 h-20 bg-[var(--primary)] rounded-[22px] mx-auto flex items-center justify-center text-white shadow-xl shadow-[var(--primary)]/20 mb-6">
           <User size={40} />
         </div>
@@ -46,13 +46,13 @@ export default function RegisterPage() {
       </header>
 
       {error && (
-        <div className="bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-900/30 p-4 rounded-2xl flex items-center gap-3 text-red-600 dark:text-red-400 text-sm font-medium">
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-900/30 p-4 rounded-2xl flex items-center gap-3 text-red-600 dark:text-red-400 text-sm font-medium shrink-0">
           <AlertCircle size={18} />
           {error}
         </div>
       )}
 
-      <form className="space-y-4" onSubmit={handleRegister}>
+      <form className="space-y-4 shrink-0" onSubmit={handleRegister}>
         <div className="space-y-2">
           <label className="text-xs font-bold text-[var(--muted-foreground)] uppercase tracking-widest px-1">E-Mail</label>
           <div className="relative">
@@ -97,7 +97,7 @@ export default function RegisterPage() {
         </button>
       </form>
 
-      <footer className="text-center space-y-4">
+      <footer className="text-center space-y-4 shrink-0">
         <p className="text-[var(--muted-foreground)] font-medium text-sm">
           Bereits ein Konto? <Link href="/login" className="text-[var(--primary)] font-bold">Jetzt anmelden</Link>
         </p>

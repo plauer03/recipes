@@ -92,7 +92,8 @@ export default function RecipesPage() {
 
     setIsSearchingExternal(true);
     try {
-      const res = await fetch(`https://de.world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query)}&search_simple=1&action=process&json=1&page_size=15&fields=code,product_name_de,product_name,nutriments,brands`);
+      // Use standard world subdomain but filter for German names and common brands
+      const res = await fetch(`https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query)}&search_simple=1&action=process&json=1&page_size=20&fields=code,product_name_de,product_name,nutriments,brands`);
       const data = await res.json();
       if (data.products) {
         const mapped = data.products
@@ -110,7 +111,7 @@ export default function RecipesPage() {
         setExternalResults(mapped);
       }
     } catch (err) {
-      console.error(err);
+      console.error("Search error:", err);
     } finally {
       setIsSearchingExternal(false);
     }

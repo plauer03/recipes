@@ -7,6 +7,10 @@ import { Home, Search, BookOpen, ShoppingBag, User } from "lucide-react";
 const BottomNav = () => {
   const pathname = usePathname();
 
+  const isAuthPage = pathname?.startsWith('/login') || pathname?.startsWith('/register');
+
+  if (isAuthPage) return null;
+
   const navItems = [
     { name: "Heute", href: "/", icon: Home },
     { name: "Suchen", href: "/search", icon: Search },
