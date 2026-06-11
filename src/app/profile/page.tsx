@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useTheme } from "next-themes";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
@@ -14,12 +14,14 @@ export default function ProfilePage() {
   const { theme, setTheme } = useTheme();
   const supabase = createClient();
   const router = useRouter();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [profile, setProfile] = useState<any>(null);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [isManagingIngredients, setIsManagingIngredients] = useState(false);
   const [newName, setNewName] = useState("");
   const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   // Ingredients management state
   const [ingredients, setIngredients] = useState<any[]>([]);
@@ -105,6 +107,45 @@ export default function ProfilePage() {
     fetchIngredients();
   }
 
+  async function handleAvatarUpload(event: React.ChangeEvent<HTMLInputElement>) {
+    try {
+      setUploading(true);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Nicht eingeloggt");
+
+      if (!event.target.files || event.target.files.length === 0) {
+        throw new Error("Wähle ein Bild aus.");
+      }
+
+      const file = event.target.files[0];
+      const fileExt = file.name.split('.').pop();
+      const filePath = `${user.id}-${Math.random()}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(filePath);
+
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ avatar_url: publicUrl })
+        .eq('id', user.id);
+
+      if (updateError) throw updateError;
+
+      fetchProfile();
+    } catch (error: any) {
+      alert(error.message);
+    } finally {
+      setUploading(false);
+    }
+  }
+
   return (
     <div className="space-y-8 fade-in h-full flex flex-col overflow-hidden">
       <header className="pt-4 px-1 shrink-0">
@@ -114,13 +155,30 @@ export default function ProfilePage() {
       <div className="flex-1 overflow-y-auto no-scrollbar pb-20 space-y-6">
         {/* User Profile Card */}
         <div className="bg-[var(--card)] p-6 rounded-[32px] border border-[var(--border)]/10 shadow-sm flex flex-col items-center text-center gap-4 mx-1">
-          <div className="relative group" onClick={() => setIsEditingProfile(true)}>
-            <div className="w-24 h-24 rounded-full bg-[var(--primary)] flex items-center justify-center text-white text-3xl font-bold uppercase shrink-0 shadow-lg group-active:scale-95 transition-transform">
-              {profile?.name?.[0] || profile?.email?.[0] || "?"}
+          <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
+            <div className="w-24 h-24 rounded-full bg-[var(--primary)] flex items-center justify-center text-white text-3xl font-bold uppercase shrink-0 shadow-lg group-active:scale-95 transition-transform overflow-hidden">
+              {profile?.avatar_url ? (
+                <img src={profile.avatar_url} alt="Profile" className="w-full h-full object-cover" />
+              ) : (
+                profile?.name?.[0] || profile?.email?.[0] || "?"
+              )}
+              {uploading && (
+                <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                  <Loader2 className="animate-spin text-white" size={24} />
+                </div>
+              )}
             </div>
             <div className="absolute bottom-0 right-0 w-8 h-8 bg-white dark:bg-[var(--card)] rounded-full border border-[var(--border)]/20 shadow-md flex items-center justify-center text-[var(--primary)]">
               <Camera size={14} />
             </div>
+            <input 
+              type="file" 
+              ref={fileInputRef} 
+              className="hidden" 
+              accept="image/*" 
+              onChange={handleAvatarUpload}
+              disabled={uploading}
+            />
           </div>
           
           <div className="space-y-1">
@@ -228,7 +286,7 @@ export default function ProfilePage() {
       {/* Ingredients Management Modal */}
       {isManagingIngredients && (
         <div className="fixed inset-0 z-[100] flex items-end justify-center px-0">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setIsManagingIngredients(false)} />
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setIsManagingIngredients(false)} />
           <div className="relative w-full max-w-[450px] bg-[var(--background)] rounded-t-[32px] p-6 h-[90dvh] flex flex-col gap-6 fade-in shadow-2xl overflow-hidden">
             <div className="w-10 h-1.5 bg-[var(--muted)] rounded-full mx-auto shrink-0" />
             <div className="flex justify-between items-center shrink-0">
