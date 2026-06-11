@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Sparkles, ChefHat, Flame, ShoppingBag, ChevronRight, Heart, X, Dices, Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import RecipeDetailModal from "@/components/RecipeDetailModal";
 
 const AVAILABLE_TAGS = [
   "Frühstück", "Hauptspeise", "Beilage", "Snack", "Dessert", 
@@ -21,6 +22,8 @@ export default function Dashboard() {
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [suggestedRecipe, setSuggestedRecipe] = useState<any>(null);
   const [isSpinning, setIsSpinning] = useState(false);
+  
+  const [selectedRecipe, setSelectedRecipe] = useState<any>(null);
   
   const supabase = createClient();
 
@@ -72,19 +75,32 @@ export default function Dashboard() {
         setSuggestedRecipe({ notFound: true });
       }
       setIsSpinning(false);
-    }, 800); // Fake delay for UX
+    }, 800);
   };
+
+  async function toggleFavorite(recipe: any) {
+    const newStatus = !recipe.is_favorite;
+    setRecipes(prev => prev.map(r => r.id === recipe.id ? { ...r, is_favorite: newStatus } : r));
+    setFavorites(prev => {
+      if (newStatus) {
+        const fullRecipe = recipes.find(r => r.id === recipe.id);
+        return [{ ...fullRecipe, is_favorite: true }, ...prev];
+      }
+      return prev.filter(r => r.id !== recipe.id);
+    });
+    await supabase.from('recipes').update({ is_favorite: newStatus }).eq('id', recipe.id);
+  }
 
   return (
     <div className="space-y-6 fade-in h-full flex flex-col overflow-hidden">
       <header className="pt-4 shrink-0">
-        <h1 className="text-4xl font-extrabold tracking-tight">Guten Appetit!</h1>
-        <p className="text-[var(--muted-foreground)] font-medium">Was kochen wir heute?</p>
+        <h1 className="text-4xl font-extrabold tracking-tight px-1">Guten Appetit!</h1>
+        <p className="text-[var(--muted-foreground)] font-medium px-1">Was kochen wir heute?</p>
       </header>
 
       <section 
         onClick={() => setIsInspirationOpen(true)}
-        className="bg-[var(--primary)] text-white p-6 rounded-[28px] shadow-lg ios-active-scale cursor-pointer shrink-0"
+        className="bg-[var(--primary)] text-white p-6 rounded-[28px] shadow-lg ios-active-scale cursor-pointer shrink-0 mx-1"
       >
         <div className="flex items-center justify-between">
           <div className="space-y-1">
@@ -98,14 +114,14 @@ export default function Dashboard() {
         </div>
       </section>
 
-      <div className="flex gap-4 shrink-0">
+      <div className="flex gap-4 shrink-0 px-1">
         <div className="flex-1 bg-[var(--card)] p-4 rounded-[22px] flex items-center gap-3 border border-[var(--border)]/5 shadow-sm">
           <div className="w-10 h-10 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center text-orange-600">
             <Flame size={20} />
           </div>
           <div className="min-w-0">
             <p className="text-[10px] font-bold text-[var(--muted-foreground)] uppercase tracking-wider">Rezepte</p>
-            <p className="text-lg font-bold truncate">{recipes.length} gesamt</p>
+            <p className="text-lg font-bold">{recipes.length}</p>
           </div>
         </div>
         <div className="flex-1 bg-[var(--card)] p-4 rounded-[22px] flex items-center gap-3 border border-[var(--border)]/5 shadow-sm">
@@ -114,21 +130,21 @@ export default function Dashboard() {
           </div>
           <div className="min-w-0">
             <p className="text-[10px] font-bold text-[var(--muted-foreground)] uppercase tracking-wider">Favoriten</p>
-            <p className="text-lg font-bold truncate">{favorites.length} gemerkt</p>
+            <p className="text-lg font-bold">{favorites.length}</p>
           </div>
         </div>
       </div>
 
-      <section className="space-y-3 flex-1 overflow-hidden flex flex-col min-h-0 pb-4">
-        <h2 className="text-xl font-bold tracking-tight px-1 shrink-0">Favoriten</h2>
+      <section className="space-y-3 flex-1 overflow-hidden flex flex-col min-h-0 pb-4 px-1">
+        <h2 className="text-xl font-bold tracking-tight px-1 shrink-0">Deine Favoriten</h2>
         <div className="bg-[var(--card)] rounded-[24px] border border-[var(--border)]/10 shadow-sm overflow-y-auto no-scrollbar flex-1 p-2">
           {loading ? (
             <div className="p-8 text-center"><Loader2 className="animate-spin mx-auto text-[var(--primary)]" /></div>
           ) : favorites.length > 0 ? (
             <div className="space-y-1">
               {favorites.map(f => (
-                <div key={f.id} className="p-3 rounded-2xl flex items-center gap-4 ios-active-scale cursor-pointer hover:bg-[var(--muted)]/20">
-                  <div className="w-12 h-12 bg-pink-100 dark:bg-pink-900/20 rounded-xl flex items-center justify-center text-pink-500 shrink-0">
+                <div key={f.id} onClick={() => setSelectedRecipe(f)} className="p-3 rounded-2xl flex items-center gap-4 ios-active-scale cursor-pointer hover:bg-[var(--muted)]/20 transition-colors">
+                  <div className="w-12 h-12 bg-pink-100 dark:bg-pink-900/20 rounded-xl flex items-center justify-center text-pink-500 shrink-0 shadow-sm">
                     <Heart size={20} className="fill-pink-500" />
                   </div>
                   <div className="flex-1 min-w-0">
@@ -137,6 +153,7 @@ export default function Dashboard() {
                       {f.tags && f.tags.length > 0 ? f.tags.slice(0, 3).join(' • ') : "Favorit"}
                     </p>
                   </div>
+                  <ChevronRight size={16} className="text-[var(--muted-foreground)] opacity-20" />
                 </div>
               ))}
             </div>
@@ -165,13 +182,13 @@ export default function Dashboard() {
               <button onClick={() => setIsInspirationOpen(false)} className="w-8 h-8 rounded-full bg-[var(--muted)]/50 flex items-center justify-center text-[var(--muted-foreground)]"><X size={18} /></button>
             </div>
 
-            <div className="flex-1 overflow-y-auto no-scrollbar space-y-6 pb-20">
-              <div className="flex flex-wrap gap-2">
+            <div className="flex-1 overflow-hidden flex flex-col gap-6">
+              <div className="flex flex-wrap gap-2 shrink-0">
                 {AVAILABLE_TAGS.map(tag => (
                   <button 
                     key={tag}
                     onClick={() => toggleTag(tag)}
-                    className={`px-4 py-2 rounded-full text-sm font-bold transition-colors border ${
+                    className={`px-3 py-1.5 rounded-full text-xs font-bold transition-colors border ${
                       selectedTags.includes(tag) 
                         ? "bg-[var(--primary)] text-white border-[var(--primary)] shadow-md" 
                         : "bg-[var(--card)] text-[var(--muted-foreground)] border-[var(--border)]/10"
@@ -183,7 +200,7 @@ export default function Dashboard() {
               </div>
 
               {suggestedRecipe && (
-                <div className="pt-4 border-t border-[var(--border)]/10 animate-in fade-in slide-in-from-bottom-4">
+                <div className="pt-4 border-t border-[var(--border)]/10 animate-in fade-in slide-in-from-bottom-4 flex-1 flex flex-col min-h-0">
                   <h3 className="text-[10px] font-bold text-[var(--muted-foreground)] uppercase tracking-widest px-2 mb-3">Vorschlag</h3>
                   
                   {suggestedRecipe.notFound ? (
@@ -193,18 +210,19 @@ export default function Dashboard() {
                       <p className="text-sm text-[var(--muted-foreground)]">Für diese Kombination gibt es noch keine Rezepte.</p>
                     </div>
                   ) : (
-                    <div className="bg-[var(--card)] p-5 rounded-3xl border border-[var(--border)]/10 shadow-lg">
-                      <div className="w-14 h-14 bg-[var(--primary)]/10 rounded-2xl flex items-center justify-center text-[var(--primary)] mb-4"><ChefHat size={28} /></div>
-                      <h3 className="font-bold text-xl mb-1">{suggestedRecipe.title}</h3>
-                      <p className="text-xs text-[var(--primary)] font-bold uppercase tracking-tight mb-4">
+                    <div className="bg-[var(--card)] p-5 rounded-3xl border border-[var(--border)]/10 shadow-lg ios-active-scale cursor-pointer" onClick={() => {
+                      setIsInspirationOpen(false);
+                      setSelectedRecipe(suggestedRecipe);
+                    }}>
+                      <div className="w-14 h-14 bg-[var(--primary)]/10 rounded-2xl flex items-center justify-center text-[var(--primary)] mb-4 shrink-0"><ChefHat size={28} /></div>
+                      <h3 className="font-bold text-xl mb-1 truncate">{suggestedRecipe.title}</h3>
+                      <p className="text-xs text-[var(--primary)] font-bold uppercase tracking-tight mb-4 truncate">
                         {suggestedRecipe.tags?.join(' • ')}
                       </p>
-                      <button onClick={() => {
-                        setIsInspirationOpen(false);
-                        window.location.href = "/recipes";
-                      }} className="w-full bg-[var(--muted)]/50 text-[var(--foreground)] py-3 rounded-xl font-bold text-sm">
-                        Zum Rezept
-                      </button>
+                      <div className="flex items-center gap-2 text-[var(--primary)] font-bold text-xs uppercase tracking-widest">
+                        <span>Details ansehen</span>
+                        <ChevronRight size={14} />
+                      </div>
                     </div>
                   )}
                 </div>
@@ -214,12 +232,20 @@ export default function Dashboard() {
             <button 
               onClick={findInspiration} 
               disabled={isSpinning}
-              className="w-full bg-[var(--primary)] text-white py-5 rounded-[24px] font-bold text-lg shadow-xl flex items-center justify-center gap-3 ios-active-scale disabled:opacity-50 shrink-0"
+              className="w-full bg-[var(--primary)] text-white py-5 rounded-[24px] font-bold text-lg shadow-xl flex items-center justify-center gap-3 ios-active-scale disabled:opacity-50 shrink-0 mt-auto"
             >
               {isSpinning ? <Loader2 className="animate-spin" /> : <><Dices size={24} /> Rezept würfeln</>}
             </button>
           </div>
         </div>
+      )}
+
+      {selectedRecipe && (
+        <RecipeDetailModal 
+          recipe={selectedRecipe} 
+          onClose={() => setSelectedRecipe(null)}
+          onToggleFavorite={toggleFavorite}
+        />
       )}
     </div>
   );
