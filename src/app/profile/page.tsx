@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { 
   User, Mail, Settings, LogOut, 
   ChevronRight, Moon, ShieldCheck,
-  Plus, X, Apple, Loader2, Search
+  Plus, X, Apple, Loader2, Search, Camera
 } from "lucide-react";
 
 export default function ProfilePage() {
@@ -113,18 +113,37 @@ export default function ProfilePage() {
 
       <div className="flex-1 overflow-y-auto no-scrollbar pb-20 space-y-6">
         {/* User Profile Card */}
-        <div 
-          onClick={() => setIsEditingProfile(true)}
-          className="bg-[var(--card)] p-4 rounded-2xl flex items-center gap-4 border border-[var(--border)]/10 shadow-sm ios-active-scale cursor-pointer"
-        >
-          <div className="w-16 h-16 rounded-full bg-[var(--primary)] flex items-center justify-center text-white text-2xl font-bold uppercase shrink-0 shadow-sm">
-            {profile?.name?.[0] || profile?.email?.[0] || "?"}
+        <div className="bg-[var(--card)] p-6 rounded-[32px] border border-[var(--border)]/10 shadow-sm flex flex-col items-center text-center gap-4 mx-1">
+          <div className="relative group" onClick={() => setIsEditingProfile(true)}>
+            <div className="w-24 h-24 rounded-full bg-[var(--primary)] flex items-center justify-center text-white text-3xl font-bold uppercase shrink-0 shadow-lg group-active:scale-95 transition-transform">
+              {profile?.name?.[0] || profile?.email?.[0] || "?"}
+            </div>
+            <div className="absolute bottom-0 right-0 w-8 h-8 bg-white dark:bg-[var(--card)] rounded-full border border-[var(--border)]/20 shadow-md flex items-center justify-center text-[var(--primary)]">
+              <Camera size={14} />
+            </div>
           </div>
-          <div className="flex-1 min-w-0">
-            <h2 className="text-xl font-bold truncate">{profile?.name || "Name festlegen"}</h2>
-            <p className="text-[var(--muted-foreground)] text-sm truncate">{profile?.email || "Lädt..."}</p>
+          
+          <div className="space-y-1">
+            <h2 className="text-2xl font-black">{profile?.name || "Name festlegen"}</h2>
+            <div className="flex items-center gap-6 justify-center pt-2">
+               <div className="flex flex-col">
+                  <span className="text-lg font-black leading-none">0</span>
+                  <span className="text-[10px] font-bold text-[var(--muted-foreground)] uppercase tracking-widest">Follower</span>
+               </div>
+               <div className="w-px h-6 bg-[var(--border)] opacity-20" />
+               <div className="flex flex-col">
+                  <span className="text-lg font-black leading-none">0</span>
+                  <span className="text-[10px] font-bold text-[var(--muted-foreground)] uppercase tracking-widest">Gefolgt</span>
+               </div>
+            </div>
           </div>
-          <ChevronRight size={20} className="text-[var(--muted-foreground)] opacity-30 shrink-0" />
+
+          <button 
+            onClick={() => setIsEditingProfile(true)}
+            className="w-full bg-[var(--muted)]/50 py-3 rounded-2xl text-xs font-bold uppercase tracking-widest ios-active-scale"
+          >
+            Profil bearbeiten
+          </button>
         </div>
 
         <div className="space-y-2">
@@ -146,7 +165,7 @@ export default function ProfilePage() {
               </div>
               <div className="flex-1 text-left">
                 <p className="font-semibold">Ernährungsdatenbank</p>
-                <p className="text-[10px] text-[var(--muted-foreground)] font-bold uppercase tracking-tight">Deutscher Bundeslebensmittelschlüssel (API)</p>
+                <p className="text-[10px] text-[var(--muted-foreground)] font-bold uppercase tracking-tight">BLS 4.0</p>
               </div>
               <button 
                 onClick={toggleExternalDb}

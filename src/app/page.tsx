@@ -111,7 +111,6 @@ export default function Dashboard() {
     <div className="space-y-6 fade-in h-full flex flex-col overflow-hidden">
       <header className="pt-4 shrink-0 px-1">
         <h1 className="text-4xl font-extrabold tracking-tight">Guten Appetit!</h1>
-        <p className="text-[var(--muted-foreground)] font-medium">Dein smarter Feed</p>
       </header>
 
       {/* Daily Recommendation Feed */}

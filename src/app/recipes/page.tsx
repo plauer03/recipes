@@ -343,7 +343,7 @@ export default function RecipesPage() {
             <div className="w-10 h-1.5 bg-[var(--muted)] rounded-full mx-auto shrink-0" />
             <div className="flex justify-between items-center shrink-0">
               <h2 className="text-2xl font-bold tracking-tight">{editingId ? "Bearbeiten" : "Neues Rezept"}</h2>
-              <button onClick={() => setIsAdding(false)} disabled={saving} className="text-[var(--primary)] font-bold px-2">Fertig</button>
+              <button onClick={handleSave} disabled={!title || saving} className="text-[var(--primary)] font-bold px-2 active:opacity-50 transition-opacity">Speichern</button>
             </div>
             {error && <div className="bg-red-50 text-red-600 p-4 rounded-2xl flex items-center gap-2 text-xs font-bold shrink-0 shadow-sm border border-red-100"><AlertCircle size={16} /> {error}</div>}
             <div className="flex-1 overflow-y-auto no-scrollbar space-y-6 pb-32">
