@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Sparkles, ChefHat, Flame, ShoppingBag, ChevronRight, Heart, X, Dices } from "lucide-react";
+import { Sparkles, ChefHat, Flame, ShoppingBag, ChevronRight, Heart, X, Dices, Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
 const AVAILABLE_TAGS = [

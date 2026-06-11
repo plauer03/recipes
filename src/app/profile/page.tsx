@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { 
   User, Mail, Settings, LogOut, 
   ChevronRight, Moon, ShieldCheck,
-  Plus, X, Apple, Loader2
+  Plus, X, Apple, Loader2, Search
 } from "lucide-react";
 
 export default function ProfilePage() {
@@ -140,6 +140,21 @@ export default function ProfilePage() {
               <span className="flex-1 text-left font-semibold">Zutaten Datenbank</span>
               <ChevronRight size={18} className="text-[var(--muted-foreground)] opacity-30" />
             </button>
+            <div className="flex items-center gap-4 p-4 border-b border-[var(--border)]/10">
+              <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/30 text-blue-600 flex items-center justify-center shrink-0">
+                <Search size={18} />
+              </div>
+              <div className="flex-1 text-left">
+                <p className="font-semibold">Externe Datenbank</p>
+                <p className="text-[10px] text-[var(--muted-foreground)] font-bold uppercase tracking-tight">OpenFoodFacts API</p>
+              </div>
+              <button 
+                onClick={toggleExternalDb}
+                className={`w-11 h-6 rounded-full transition-all relative ${useExternalDb ? 'bg-green-500' : 'bg-gray-200 dark:bg-gray-700'}`}
+              >
+                <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all shadow-sm ${useExternalDb ? 'left-6' : 'left-1'}`} />
+              </button>
+            </div>
             <div className="flex items-center gap-4 p-4">
               <div className="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 flex items-center justify-center shrink-0">
                 <Moon size={18} />
@@ -245,23 +260,6 @@ export default function ProfilePage() {
                     </span>
                   </div>
                   <button onClick={() => deleteIngredient(ing.id)} className="text-red-500/30 active:text-red-500 p-2 transition-colors">
-                    <X size={18} />
-                  </button>
-                </div>
-              )) : (
-                <div className="py-20 text-center opacity-30">
-                  <Apple size={48} className="mx-auto mb-2" />
-                  <p className="text-sm font-bold uppercase">Keine Einträge</p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-            <button onClick={() => deleteIngredient(ing.id)} className="text-red-500/30 active:text-red-500 p-2 transition-colors">
                     <X size={18} />
                   </button>
                 </div>
