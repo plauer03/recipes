@@ -145,8 +145,8 @@ export default function ProfilePage() {
                 <Search size={18} />
               </div>
               <div className="flex-1 text-left">
-                <p className="font-semibold">Externe Datenbank</p>
-                <p className="text-[10px] text-[var(--muted-foreground)] font-bold uppercase tracking-tight">Smarte Lebensmittel-Datenbank</p>
+                <p className="font-semibold">Ernährungsdatenbank</p>
+                <p className="text-[10px] text-[var(--muted-foreground)] font-bold uppercase tracking-tight">Deutscher Bundeslebensmittelschlüssel (API)</p>
               </div>
               <button 
                 onClick={toggleExternalDb}

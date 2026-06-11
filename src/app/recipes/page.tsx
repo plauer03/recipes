@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { 
   Plus, Search, X, Check, ShoppingBag, 
   Trash2, ChefHat, ChevronRight, Scale,
-  Loader2, AlertCircle, Edit3, Flame, Tag, Heart
+  Loader2, AlertCircle, Edit3, Flame, Tag, Heart, Play
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
@@ -14,6 +14,7 @@ interface RecipeIngredient {
   amount: number;
   unit: string;
   calories_per_100g: number;
+  isExternal?: boolean;
 }
 
 const AVAILABLE_TAGS = [
@@ -31,6 +32,7 @@ export default function RecipesPage() {
   const [selectedRecipe, setSelectedRecipe] = useState<any>(null);
   const [recipeIngredients, setRecipeIngredients] = useState<any[]>([]);
   const [portions, setPortions] = useState(2);
+  const [isCooking, setIsCooking] = useState(false);
   const supabase = createClient();
 
   // List State
@@ -63,58 +65,16 @@ export default function RecipesPage() {
   }, []);
 
   useEffect(() => {
-    // Immediate clear and stop if too short
     if (ingSearchQuery.length <= 2) {
       setExternalResults([]);
       setIsSearchingExternal(false);
       return;
     }
-
-    // Clear old results while searching for new ones to prevent "stuck" UI
-    setExternalResults([]);
-
     const delayDebounceFn = setTimeout(() => {
       searchExternalIngredients(ingSearchQuery);
-    }, 350); // Faster response
-
+    }, 350);
     return () => clearTimeout(delayDebounceFn);
   }, [ingSearchQuery]);
-
-  async function searchExternalIngredients(query: string) {
-    const { data: profile } = await supabase.from('profiles').select('use_external_db').single();
-    if (!profile?.use_external_db) return;
-
-    setIsSearchingExternal(true);
-    try {
-      const res = await fetch(`https://www.teitge.de/wp-json/food-api/v1/foods?search=${encodeURIComponent(query)}`);
-      const data = await res.json();
-      
-      if (data && typeof data === 'object') {
-        // Convert object values to array
-        const items = Object.values(data);
-        const mapped = items
-          .map((p: any) => {
-            const name = p.name || "Unbekannt";
-            const subname = p.subname ? ` (${p.subname})` : "";
-            const kcal = p["Energie (kcal)"] || 0;
-            
-            return {
-              id: `ext-${p.id}`,
-              name: `${name}${subname}`,
-              calories_per_100g: Math.round(kcal),
-              isExternal: true
-            };
-          })
-          .filter((p: any) => p.calories_per_100g > 0);
-        
-        setExternalResults(mapped);
-      }
-    } catch (err) {
-      console.error("Search error:", err);
-    } finally {
-      setIsSearchingExternal(false);
-    }
-  }
 
   async function fetchRecipes() {
     setLoading(true);
@@ -128,6 +88,31 @@ export default function RecipesPage() {
     if (data) setAvailableIngredients(data);
   }
 
+  async function searchExternalIngredients(query: string) {
+    const { data: profile } = await supabase.from('profiles').select('use_external_db').single();
+    if (!profile?.use_external_db) return;
+
+    setIsSearchingExternal(true);
+    try {
+      const res = await fetch(`https://www.teitge.de/wp-json/food-api/v1/foods?search=${encodeURIComponent(query)}`);
+      const data = await res.json();
+      if (data && typeof data === 'object') {
+        const items = Object.values(data);
+        const mapped = items.map((p: any) => ({
+          id: `ext-${p.id}`,
+          name: `${p.name}${p.subname ? ` (${p.subname})` : ""}`,
+          calories_per_100g: Math.round(p["Energie (kcal)"] || 0),
+          isExternal: true
+        })).filter((p: any) => p.calories_per_100g > 0);
+        setExternalResults(mapped);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsSearchingExternal(false);
+    }
+  }
+
   const handlePickIngredient = (ing: any) => {
     setCurrentPickingIng(ing);
   };
@@ -139,7 +124,8 @@ export default function RecipesPage() {
       name: currentPickingIng.name, 
       amount: Number(ingAmount), 
       unit: ingUnit, 
-      calories_per_100g: currentPickingIng.calories_per_100g 
+      calories_per_100g: currentPickingIng.calories_per_100g,
+      isExternal: currentPickingIng.isExternal
     }]);
     setCurrentPickingIng(null);
     setIsSelectingIngredient(false);
@@ -164,6 +150,27 @@ export default function RecipesPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Nicht eingeloggt");
 
+      // 1. Ensure all ingredients exist in local table (auto-save external ones)
+      const processedIngredients = [];
+      for (const ing of ingredientsList) {
+        if (ing.isExternal) {
+          const { data: existing } = await supabase.from('ingredients').select('id').eq('name', ing.name).eq('created_by', user.id).single();
+          if (existing) {
+            processedIngredients.push({ ...ing, id: existing.id });
+          } else {
+            const { data: created, error: createErr } = await supabase.from('ingredients').insert([{
+              name: ing.name,
+              calories_per_100g: ing.calories_per_100g,
+              created_by: user.id
+            }]).select().single();
+            if (createErr) throw createErr;
+            processedIngredients.push({ ...ing, id: created.id });
+          }
+        } else {
+          processedIngredients.push(ing);
+        }
+      }
+
       const recipeObj: any = {
         title,
         instructions,
@@ -184,10 +191,10 @@ export default function RecipesPage() {
         recipeId = insData.id;
       }
 
-      if (ingredientsList.length > 0 && recipeId) {
-        const links = ingredientsList.map(ing => ({
+      if (processedIngredients.length > 0 && recipeId) {
+        const links = processedIngredients.map(ing => ({
           recipe_id: recipeId,
-          ingredient_id: ing.id.startsWith('ext-') ? null : ing.id, // Handle external later or skip
+          ingredient_id: ing.id,
           amount: ing.amount,
           unit: ing.unit
         }));
@@ -198,6 +205,7 @@ export default function RecipesPage() {
       setIsAdding(false);
       resetForm();
       fetchRecipes();
+      fetchAvailableIngredients(); // update local cache
     } catch (err: any) {
       console.error(err);
       setError(err.message || "Fehler beim Speichern.");
@@ -266,23 +274,9 @@ export default function RecipesPage() {
 
   async function toggleFavorite(recipe: any) {
     const newStatus = !recipe.is_favorite;
-    
-    // UI Feedback immediately
     setSelectedRecipe({ ...recipe, is_favorite: newStatus });
     setRecipes(prev => prev.map(r => r.id === recipe.id ? { ...r, is_favorite: newStatus } : r));
-
-    const { error } = await supabase
-      .from('recipes')
-      .update({ is_favorite: newStatus })
-      .eq('id', recipe.id);
-
-    if (error) {
-      console.error("Favorite save error:", error);
-      // Revert UI if it fails
-      setSelectedRecipe({ ...recipe, is_favorite: !newStatus });
-      setRecipes(prev => prev.map(r => r.id === recipe.id ? { ...r, is_favorite: !newStatus } : r));
-      alert("Fehler: Favorit konnte nicht gespeichert werden.");
-    }
+    await supabase.from('recipes').update({ is_favorite: newStatus }).eq('id', recipe.id);
   }
 
   async function addToShoppingList() {
@@ -348,13 +342,7 @@ export default function RecipesPage() {
       <div className="space-y-3 shrink-0">
         <div className="relative">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--muted-foreground)]" size={18} />
-          <input 
-            type="text" 
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Rezepte suchen..." 
-            className="w-full bg-[var(--card)] border border-[var(--border)]/10 rounded-2xl py-3.5 pl-11 pr-4 font-medium outline-none shadow-sm" 
-          />
+          <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Rezepte suchen..." className="w-full bg-[var(--card)] border border-[var(--border)]/10 rounded-2xl py-3.5 pl-11 pr-4 font-medium outline-none shadow-sm" />
         </div>
 
         <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1 px-1">
@@ -400,12 +388,12 @@ export default function RecipesPage() {
             <div className="w-10 h-1.5 bg-[var(--muted)] rounded-full mx-auto shrink-0" />
             <div className="flex justify-between items-center shrink-0">
               <h2 className="text-2xl font-bold tracking-tight">{editingId ? "Bearbeiten" : "Neues Rezept"}</h2>
-              <button onClick={() => setIsAdding(false)} disabled={saving} className="text-[var(--primary)] font-bold">Fertig</button>
+              <button onClick={() => setIsAdding(false)} disabled={saving} className="text-[var(--primary)] font-bold px-2">Fertig</button>
             </div>
-            {error && <div className="bg-red-50 text-red-600 p-4 rounded-2xl flex items-center gap-2 text-xs font-bold shrink-0"><AlertCircle size={16} /> {error}</div>}
+            {error && <div className="bg-red-50 text-red-600 p-4 rounded-2xl flex items-center gap-2 text-xs font-bold shrink-0 shadow-sm border border-red-100"><AlertCircle size={16} /> {error}</div>}
             <div className="flex-1 overflow-y-auto no-scrollbar space-y-6 pb-32">
               <div className="space-y-4">
-                <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Rezept Titel" className="w-full bg-[var(--card)] p-4 rounded-2xl border border-[var(--border)]/10 outline-none font-bold text-xl shadow-sm" />
+                <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Titel" className="w-full bg-[var(--card)] p-4 rounded-2xl border border-[var(--border)]/10 outline-none font-bold text-xl shadow-sm" />
                 <div className="bg-[var(--card)] p-4 rounded-2xl flex justify-between items-center border border-[var(--border)]/10 shadow-sm">
                   <span className="font-bold text-sm">Basis Portionen</span>
                   <div className="flex items-center gap-4">
@@ -434,7 +422,7 @@ export default function RecipesPage() {
                 </div>
               </div>
               <div className="space-y-2">
-                <h3 className="text-[10px] font-bold text-[var(--muted-foreground)] uppercase tracking-widest px-2">Zubereitung</h3>
+                <h3 className="text-[10px] font-bold text-[var(--muted-foreground)] uppercase tracking-widest px-2">Anleitung</h3>
                 <textarea value={instructions} onChange={e => setInstructions(e.target.value)} placeholder="Schritte..." rows={6} className="w-full bg-[var(--card)] p-4 rounded-2xl border border-[var(--border)]/10 outline-none font-medium shadow-sm resize-none leading-relaxed" />
               </div>
               <button onClick={handleSave} disabled={!title || saving} className="w-full bg-[var(--primary)] text-white py-5 rounded-[24px] font-bold text-lg shadow-xl flex items-center justify-center ios-active-scale disabled:opacity-30">{saving ? <Loader2 className="animate-spin" /> : "Speichern"}</button>
@@ -452,15 +440,15 @@ export default function RecipesPage() {
               <>
                 <div className="flex justify-between items-center shrink-0">
                   <h2 className="text-xl font-bold tracking-tight">Zutat wählen</h2>
-                  <button onClick={() => setIsSelectingIngredient(false)} className="text-[var(--primary)] font-bold px-2">Abbrechen</button>
+                  <button onClick={() => setIsSelectingIngredient(false)} className="text-[var(--primary)] font-bold px-2 active:opacity-50">Abbrechen</button>
                 </div>
-                <div className="relative shrink-0">
-                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--muted-foreground)]" size={18} />
+                <div className="relative shrink-0 px-1">
+                  <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-[var(--muted-foreground)]" size={18} />
                   <input type="text" placeholder="Suchen..." value={ingSearchQuery} onChange={e => setIngSearchQuery(e.target.value)} className="w-full bg-[var(--card)] border border-[var(--border)]/10 rounded-2xl py-3.5 pl-11 pr-4 font-medium outline-none shadow-sm" />
                 </div>
                 <div className="flex-1 overflow-y-auto no-scrollbar space-y-2 pb-10 px-1">
                   {filteredIngredients.map(ing => (
-                    <button key={ing.id} onClick={() => handlePickIngredient(ing)} className="w-full bg-[var(--card)] p-4 rounded-2xl flex justify-between items-center border border-[var(--border)]/5 text-left active:bg-[var(--muted)]/50">
+                    <button key={ing.id} onClick={() => handlePickIngredient(ing)} className="w-full bg-[var(--card)] p-4 rounded-2xl flex justify-between items-center border border-[var(--border)]/5 ios-active-scale text-left">
                       <div className="flex flex-col"><span className="font-bold">{ing.name}</span><span className="text-[10px] text-[var(--muted-foreground)] font-bold uppercase">Deine Datenbank</span></div>
                       <ChevronRight size={18} className="opacity-20" />
                     </button>
@@ -481,11 +469,11 @@ export default function RecipesPage() {
                   <div className="space-y-2">
                     <label className="text-[10px] font-bold text-[var(--muted-foreground)] uppercase tracking-widest px-1">Menge & Einheit</label>
                     <div className="flex gap-2 h-14">
-                      <input type="number" value={ingAmount} onChange={e => setIngAmount(e.target.value)} placeholder="0" className="flex-1 bg-[var(--card)] px-4 rounded-2xl outline-none font-bold text-lg shadow-sm" autoFocus />
-                      <select value={ingUnit} onChange={e => setIngUnit(e.target.value)} className="w-24 bg-[var(--card)] px-2 rounded-2xl outline-none font-bold appearance-none text-center shadow-sm">{units.map(u => <option key={u} value={u}>{u}</option>)}</select>
+                      <input type="number" value={ingAmount} onChange={e => setIngAmount(e.target.value)} placeholder="0" className="flex-1 bg-[var(--card)] px-4 rounded-2xl outline-none font-bold text-lg shadow-sm border border-[var(--border)]/5" autoFocus />
+                      <select value={ingUnit} onChange={e => setIngUnit(e.target.value)} className="w-24 bg-[var(--card)] px-2 rounded-2xl outline-none font-bold appearance-none text-center shadow-sm border border-[var(--border)]/5">{units.map(u => <option key={u} value={u}>{u}</option>)}</select>
                     </div>
                   </div>
-                  <button onClick={confirmIngredient} disabled={!ingAmount} className="w-full bg-[var(--foreground)] text-[var(--background)] py-4 rounded-2xl font-bold text-lg shadow-lg">Übernehmen</button>
+                  <button onClick={confirmIngredient} disabled={!ingAmount} className="w-full bg-[var(--foreground)] text-[var(--background)] py-4 rounded-2xl font-bold text-lg shadow-lg ios-active-scale">Übernehmen</button>
                 </div>
               </div>
             )}
@@ -505,19 +493,23 @@ export default function RecipesPage() {
               </div>
               <div className="flex gap-2">
                 <button onClick={() => toggleFavorite(selectedRecipe)} className={`w-10 h-10 rounded-full flex items-center justify-center ios-active-scale transition-colors ${selectedRecipe.is_favorite ? 'bg-pink-100/50 text-pink-500' : 'bg-[var(--muted)]/50 text-[var(--muted-foreground)]'}`}><Heart size={18} className={selectedRecipe.is_favorite ? 'fill-pink-500' : ''} /></button>
-                <button onClick={() => startEdit(selectedRecipe)} className="w-10 h-10 rounded-full bg-[var(--muted)]/50 flex items-center justify-center text-[var(--muted-foreground)]"><Edit3 size={18} /></button>
-                <button onClick={() => deleteRecipe(selectedRecipe.id)} className="w-10 h-10 rounded-full bg-red-100/50 flex items-center justify-center text-red-500"><Trash2 size={18} /></button>
-                <button onClick={() => setSelectedRecipe(null)} className="w-10 h-10 rounded-full bg-[var(--muted)]/50 flex items-center justify-center text-[var(--muted-foreground)]"><X size={18} /></button>
+                <button onClick={() => startEdit(selectedRecipe)} className="w-10 h-10 rounded-full bg-[var(--muted)]/50 flex items-center justify-center text-[var(--muted-foreground)] ios-active-scale"><Edit3 size={18} /></button>
+                <button onClick={() => deleteRecipe(selectedRecipe.id)} className="w-10 h-10 rounded-full bg-red-100/50 flex items-center justify-center text-red-500 ios-active-scale"><Trash2 size={18} /></button>
+                <button onClick={() => setSelectedRecipe(null)} className="w-10 h-10 rounded-full bg-[var(--muted)]/50 flex items-center justify-center text-[var(--muted-foreground)] ios-active-scale"><X size={18} /></button>
               </div>
             </div>
-            <div className="flex-1 overflow-y-auto no-scrollbar space-y-6 pb-24">
+            <div className="flex-1 overflow-y-auto no-scrollbar space-y-6 pb-24 px-1">
               <div className="bg-[var(--card)] p-4 rounded-2xl flex justify-between items-center border border-[var(--border)]/5 shadow-sm">
-                <div className="flex items-center gap-2 font-bold text-sm"><Scale size={18} className="text-[var(--primary)]" /> Portionen</div>
+                <div className="flex items-center gap-2 font-bold text-sm tracking-tight"><Scale size={18} className="text-[var(--primary)]" /> Portionen anpassen</div>
                 <div className="flex items-center gap-4">
-                  <button onClick={() => setPortions(Math.max(1, portions - 1))} className="w-9 h-9 rounded-full bg-[var(--muted)]/50 flex items-center justify-center font-bold text-xl active:bg-[var(--muted)]">-</button>
+                  <button onClick={() => setPortions(Math.max(1, portions - 1))} className="w-9 h-9 rounded-full bg-[var(--muted)]/50 flex items-center justify-center font-bold text-xl active:bg-[var(--muted)] transition-colors">-</button>
                   <span className="font-bold text-xl w-4 text-center">{portions}</span>
-                  <button onClick={() => setPortions(portions + 1)} className="w-9 h-9 rounded-full bg-[var(--muted)]/50 flex items-center justify-center font-bold text-xl active:bg-[var(--muted)]">+</button>
+                  <button onClick={() => setPortions(portions + 1)} className="w-9 h-9 rounded-full bg-[var(--muted)]/50 flex items-center justify-center font-bold text-xl active:bg-[var(--muted)] transition-colors">+</button>
                 </div>
+              </div>
+              <div className="flex gap-2">
+                <button onClick={addToShoppingList} className="flex-1 bg-[var(--foreground)] text-[var(--background)] py-4 rounded-[24px] font-bold flex items-center justify-center gap-3 shadow-lg ios-active-scale"><ShoppingBag size={20} /> Einkauf</button>
+                <button onClick={() => setIsCooking(true)} className="flex-1 bg-[var(--primary)] text-white py-4 rounded-[24px] font-bold flex items-center justify-center gap-3 shadow-lg ios-active-scale"><Play size={20} fill="white" /> Kochen</button>
               </div>
               <div className="space-y-3">
                 <h3 className="text-[10px] font-bold text-[var(--muted-foreground)] uppercase tracking-widest px-2">Zutaten</h3>
@@ -530,11 +522,46 @@ export default function RecipesPage() {
                 </div>
               </div>
               <div className="space-y-3">
-                <h3 className="text-[10px] font-bold text-[var(--muted-foreground)] uppercase tracking-widest px-2">Zubereitung</h3>
+                <h3 className="text-[10px] font-bold text-[var(--muted-foreground)] uppercase tracking-widest px-2">Anleitung</h3>
                 <div className="p-5 bg-[var(--card)] rounded-[24px] text-[16px] font-medium leading-relaxed shadow-sm border border-[var(--border)]/5 whitespace-pre-wrap">{selectedRecipe.instructions || "Keine Anleitung hinterlegt."}</div>
               </div>
-              <button onClick={addToShoppingList} className="w-full bg-[var(--foreground)] text-[var(--background)] py-5 rounded-[24px] font-bold flex items-center justify-center gap-3 shadow-lg ios-active-scale mt-4 shrink-0"><ShoppingBag size={22} /> Auf Einkaufsliste setzen</button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Cooking Mode Modal */}
+      {isCooking && selectedRecipe && (
+        <div className="fixed inset-0 z-[200] bg-[var(--background)] flex flex-col fade-in overflow-hidden">
+          <header className="p-6 pb-2 border-b border-[var(--border)]/10 flex justify-between items-center shrink-0">
+            <h2 className="text-2xl font-bold truncate pr-4">{selectedRecipe.title}</h2>
+            <button onClick={() => setIsCooking(false)} className="w-10 h-10 rounded-full bg-[var(--muted)]/50 flex items-center justify-center text-[var(--muted-foreground)]"><X size={20} /></button>
+          </header>
+          <div className="flex-1 overflow-y-auto no-scrollbar p-6 pb-20 space-y-8">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xl font-bold">Zutaten für {portions} Port.</h3>
+                <div className="flex items-center gap-1.5 text-[var(--primary)] font-bold text-sm bg-[var(--primary)]/10 px-3 py-1 rounded-full"><Flame size={14} /> {getCaloriesPerPortion()} kcal</div>
+              </div>
+              <div className="grid grid-cols-1 gap-2">
+                {recipeIngredients.map((ing, i) => {
+                  const scale = portions / (selectedRecipe.base_portions || 2);
+                  const calcAmount = Math.round(ing.amount * scale * 10) / 10;
+                  return (
+                    <div key={i} className="flex items-center gap-4 bg-[var(--card)] p-4 rounded-2xl border border-[var(--border)]/5 shadow-sm">
+                      <div className="w-6 h-6 rounded-full border-2 border-[var(--primary)] flex items-center justify-center shrink-0"><Check size={14} className="text-white" /></div>
+                      <span className="font-bold flex-1">{ing.ingredients?.name}</span>
+                      <span className="font-bold text-[var(--primary)]">{calcAmount} {ing.unit}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            <div className="space-y-4">
+              <h3 className="text-xl font-bold">Zubereitung</h3>
+              <div className="p-6 bg-[var(--card)] rounded-[32px] text-[18px] font-medium leading-relaxed shadow-sm border border-[var(--border)]/5 whitespace-pre-wrap">{selectedRecipe.instructions || "Keine Anleitung hinterlegt."}</div>
+            </div>
+            <button onClick={() => setIsCooking(false)} className="w-full bg-[var(--primary)] text-white py-5 rounded-[24px] font-bold text-lg shadow-xl shadow-[var(--primary)]/20">Kochen beendet</button>
           </div>
         </div>
       )}
