@@ -88,7 +88,15 @@ export default function RecipesPage() {
         body: JSON.stringify({ text: rawIngredientsText })
       });
       
-      const data = await res.json();
+      let data;
+      const responseText = await res.text();
+      try {
+        data = JSON.parse(responseText);
+      } catch (e) {
+        console.error("API Error (Not JSON):", responseText);
+        throw new Error("Der Server ist noch nicht bereit oder hat einen Fehler (Vercel Build läuft evtl. noch). Bitte gleich nochmal probieren.");
+      }
+      
       if (!res.ok) throw new Error(data.error || 'Fehler bei der Analyse');
       
       setParsedIngredients(data.ingredients);
@@ -305,7 +313,7 @@ export default function RecipesPage() {
 
               {/* Natural Language Ingredients */}
               <div className="space-y-3">
-                <h3 className="text-[10px] font-bold text-[var(--muted-foreground)] uppercase tracking-widest px-2">Zutaten (Einfach losschreiben)</h3>
+                <h3 className="text-[10px] font-bold text-[var(--muted-foreground)] uppercase tracking-widest px-2">Zutaten</h3>
                 <textarea 
                   value={rawIngredientsText} 
                   onChange={e => {
@@ -324,7 +332,7 @@ export default function RecipesPage() {
                     className="w-full p-4 flex items-center justify-center gap-2 text-white font-bold text-sm bg-[var(--primary)] rounded-2xl shadow-md active:scale-[0.98] transition-all disabled:opacity-50"
                   >
                     {analyzing ? <Loader2 className="animate-spin" size={18} /> : <Sparkles size={18} />}
-                    Nährwerte & Zutaten berechnen
+                    Nährwerte berechnen
                   </button>
                 ) : (
                   <div className="bg-[var(--card)] rounded-2xl border border-[var(--border)]/10 overflow-hidden shadow-sm">
