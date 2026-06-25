@@ -2,8 +2,9 @@
 
 import { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Clock, ChefHat, Heart, Edit, Loader2 } from 'lucide-react';
+import { ArrowLeft, Clock, ChefHat, Heart, Edit, Loader2, ShoppingCart } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import { toast } from 'sonner';
 
 export default function RecipeDetail({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
@@ -14,10 +15,33 @@ export default function RecipeDetail({ params }: { params: Promise<{ id: string 
   const [recipe, setRecipe] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
+  const [addingToList, setAddingToList] = useState(false);
 
   useEffect(() => {
     fetchRecipe();
   }, [recipeId]);
+
+  async function addToShoppingList() {
+    if (!recipe || !user || !recipe.ingredients_data) return;
+    setAddingToList(true);
+    
+    const items = recipe.ingredients_data.map((ing: any) => ({
+      user_id: user.id,
+      ingredient_name: ing.name,
+      original_amount: Number(ing.amount) || 0,
+      unit: ing.unit || 'g',
+      is_checked: false
+    }));
+
+    const { error } = await supabase.from('shopping_list').insert(items);
+    
+    if (error) {
+      toast.error('Fehler beim Hinzufügen zur Einkaufsliste.');
+    } else {
+      toast.success('Zutaten zur Einkaufsliste hinzugefügt!');
+    }
+    setAddingToList(false);
+  }
 
   async function fetchRecipe() {
     setLoading(true);
@@ -208,6 +232,25 @@ export default function RecipeDetail({ params }: { params: Promise<{ id: string 
             </p>
           </div>
         </div>
+      </div>
+
+      {/* Sticky Bottom Actions */}
+      <div className="fixed bottom-0 w-full bg-background/90 backdrop-blur-xl border-t border-border p-4 pb-8 flex gap-3 z-30">
+        <button 
+          onClick={addToShoppingList}
+          disabled={addingToList}
+          className="flex-1 bg-secondary text-foreground font-bold rounded-2xl py-4 flex items-center justify-center gap-2 active:scale-[0.98] transition-all border border-border shadow-sm disabled:opacity-50"
+        >
+          {addingToList ? <Loader2 className="animate-spin h-5 w-5" /> : <ShoppingCart className="h-5 w-5" />}
+          Einkaufsliste
+        </button>
+        <button 
+          onClick={() => toast.success('Viel Spaß beim Kochen!')}
+          className="flex-1 bg-foreground text-background font-bold rounded-2xl py-4 flex items-center justify-center gap-2 active:scale-[0.98] transition-all shadow-md"
+        >
+          <ChefHat className="h-5 w-5" />
+          Kochen
+        </button>
       </div>
     </div>
   );

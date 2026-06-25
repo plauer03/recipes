@@ -20,7 +20,6 @@ export function AppNavigation() {
     { icon: Home, label: "Home", path: "/" },
     { icon: BookOpen, label: "Rezepte", path: "/recipes" },
     { icon: ShoppingCart, label: "Einkauf", path: "/shopping-list" },
-    { icon: Users, label: "Social", path: "/social" },
     { icon: User, label: "Profil", path: "/profile" },
   ];
 

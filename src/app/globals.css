@@ -55,22 +55,22 @@
 .dark, [data-theme='dark'] {
   --background: #000000;
   --foreground: #FAFAFA;
-  --card: #0A0A0A;
+  --card: #121212;
   --card-foreground: #FAFAFA;
-  --popover: #0A0A0A;
+  --popover: #121212;
   --popover-foreground: #FAFAFA;
   --primary: #FAFAFA; /* White */
   --primary-foreground: #000000;
-  --secondary: #171717;
+  --secondary: #1E1E1E;
   --secondary-foreground: #FAFAFA;
-  --muted: #171717;
+  --muted: #1E1E1E;
   --muted-foreground: #A1A1AA;
-  --accent: #171717;
+  --accent: #1E1E1E;
   --accent-foreground: #FAFAFA;
   --destructive: #7F1D1D;
   --destructive-foreground: #FAFAFA;
-  --border: #262626;
-  --input: #262626;
+  --border: #2C2C2C;
+  --input: #2C2C2C;
   --ring: #FAFAFA;
 }
 

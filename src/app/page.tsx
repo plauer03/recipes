@@ -177,12 +177,14 @@ export default function Home() {
             Inspiration finden
           </h3>
         </div>
-        <div className="flex overflow-x-auto px-5 pb-4 gap-2 snap-x snap-mandatory no-scrollbar">
-          {INSPO_TAGS.map(tag => (
+        <div className="flex overflow-x-auto pb-4 gap-2 snap-x snap-mandatory no-scrollbar">
+          {INSPO_TAGS.map((tag, i) => (
             <button
               key={tag}
               onClick={() => handleInspo(tag)}
               className={`snap-start shrink-0 px-4 py-2 rounded-full text-sm font-bold transition-all shadow-sm ${
+                i === 0 ? 'ml-5' : ''
+              } ${i === INSPO_TAGS.length - 1 ? 'mr-5' : ''} ${
                 activeTag === tag 
                   ? 'bg-foreground text-background scale-105' 
                   : 'bg-card text-foreground border border-border hover:bg-secondary'

@@ -19,7 +19,7 @@ export const metadata: Metadata = {
   description: "Smart Recipe Manager & Tracker",
   appleWebApp: {
     capable: true,
-    statusBarStyle: "default",
+    statusBarStyle: "black-translucent",
     title: "Recipe Manager",
   },
 };

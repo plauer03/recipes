@@ -90,7 +90,10 @@ export default function Recipes() {
   return (
     <div className="pb-10 min-h-full" style={{ fontFamily: 'var(--font-sans, system-ui)' }}>
       {/* Sticky search */}
-      <div className="sticky top-0 z-10 bg-background/90 backdrop-blur-xl px-5 py-3 border-b border-border">
+      <div 
+        className="sticky top-0 z-10 bg-background/90 backdrop-blur-xl px-5 pb-3 border-b border-border"
+        style={{ paddingTop: 'max(env(safe-area-inset-top), 12px)' }}
+      >
         <div className="relative">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
           <input
