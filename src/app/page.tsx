@@ -118,7 +118,7 @@ export default function Dashboard() {
     setTimeout(() => {
       let filtered = recipes;
       if (selectedTags.length > 0) {
-        filtered = recipes.filter(r => r.tags && selectedTags.every(t => r.tags.includes(t)));
+        filtered = recipes.filter(r => r.tags && selectedTags.every(t => r.tags?.includes(t)));
       }
       if (filtered.length > 0) {
         setSuggestedRecipe(filtered[Math.floor(Math.random() * filtered.length)]);
