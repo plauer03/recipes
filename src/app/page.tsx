@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Clock, BookOpen, TrendingUp, ArrowRight, ChefHat, Loader2, Heart } from "lucide-react";
+import { Clock, BookOpen, ArrowRight, ChefHat, Loader2, Heart } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
 export interface Recipe {
@@ -91,8 +91,21 @@ export default function Home() {
 
   return (
     <div className="min-h-full pb-10" style={{ fontFamily: 'var(--font-sans, system-ui)' }}>
+      {/* Sticky Top Header with SafeArea */}
+      <header 
+        className="sticky top-0 z-20 flex items-end justify-between px-5 pb-3 bg-background/90 backdrop-blur-xl border-b border-border w-full"
+        style={{ paddingTop: 'max(env(safe-area-inset-top), 16px)' }}
+      >
+        <span
+          className="text-xl font-bold tracking-tight text-foreground"
+          style={{ fontFamily: 'var(--font-display, system-ui)' }}
+        >
+          RecipeHub
+        </span>
+      </header>
+
       {/* Greeting */}
-      <div className="px-5 pt-4 pb-6">
+      <div className="px-5 pt-6 pb-6">
         <p className="text-sm font-semibold text-muted-foreground mb-1">Guten Appetit 👋</p>
         <h2
           className="text-3xl font-extrabold text-foreground leading-tight mb-4"
@@ -109,6 +122,51 @@ export default function Home() {
         </button>
       </div>
 
+      {/* Own Recipes Square Cards Slider */}
+      {recipes.length > 0 && (
+        <div className="mb-8">
+          <div className="flex items-center justify-between px-5 mb-4">
+            <h3 className="text-lg font-bold text-foreground" style={{ fontFamily: 'var(--font-display, system-ui)' }}>
+              Deine Rezepte
+            </h3>
+            <button onClick={() => router.push('/recipes')} className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+              Alle
+            </button>
+          </div>
+          <div className="flex overflow-x-auto px-5 pb-4 gap-4 snap-x snap-mandatory no-scrollbar">
+            {recipes.map((recipe) => (
+              <button
+                key={recipe.id}
+                onClick={() => router.push(`/recipes/${recipe.id}`)}
+                className="snap-start shrink-0 w-44 flex flex-col bg-card rounded-2xl overflow-hidden border border-border shadow-sm active:scale-95 transition-all text-left"
+              >
+                <div className="w-full h-36 bg-muted relative">
+                  {recipe.image_url ? (
+                    <img src={recipe.image_url} alt={recipe.title} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <ChefHat className="h-10 w-10 text-muted-foreground opacity-50" />
+                    </div>
+                  )}
+                  {recipe.is_favorite && (
+                    <div className="absolute top-2 right-2 bg-background/80 backdrop-blur-sm p-1.5 rounded-full">
+                      <Heart className="h-4 w-4 fill-destructive text-destructive" />
+                    </div>
+                  )}
+                </div>
+                <div className="p-3 flex-1 flex flex-col">
+                  <p className="font-bold text-foreground text-[15px] mb-1 line-clamp-2 leading-tight">{recipe.title}</p>
+                  <div className="mt-auto flex items-center gap-1.5 text-xs text-muted-foreground font-medium pt-2">
+                    <Clock className="h-3.5 w-3.5" />
+                    {(recipe.prep_time || 0) + (recipe.cook_time || 0)} Min
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Stats */}
       <div className="px-5 mb-8">
         <div className="grid grid-cols-2 gap-4">
@@ -118,7 +176,7 @@ export default function Home() {
             </div>
             <div>
               <div className="text-2xl font-bold text-foreground leading-none mb-1">{recipes.length}</div>
-              <div className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Eigene</div>
+              <div className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Erstellt</div>
             </div>
           </div>
           <div className="bg-card rounded-2xl p-4 border border-border shadow-sm flex items-center gap-4">
@@ -147,11 +205,16 @@ export default function Home() {
               onClick={() => router.push(`/recipes/${recipe.id}`)}
               className="w-full flex gap-3 bg-card rounded-2xl overflow-hidden border border-border shadow-sm hover:shadow-md active:scale-[0.98] transition-all text-left"
             >
-              <div className="w-24 h-24 shrink-0 bg-muted flex items-center justify-center">
+              <div className="w-24 h-24 shrink-0 bg-muted flex items-center justify-center relative">
                 {recipe.image_url ? (
                   <img src={recipe.image_url} alt={recipe.title} className="w-full h-full object-cover" />
                 ) : (
                   <ChefHat className="h-8 w-8 text-muted-foreground opacity-50" />
+                )}
+                {recipe.is_favorite && (
+                  <div className="absolute top-1 right-1 bg-background/80 backdrop-blur-sm p-1 rounded-full">
+                    <Heart className="h-3 w-3 fill-destructive text-destructive" />
+                  </div>
                 )}
               </div>
               <div className="flex-1 py-3 pr-3 min-w-0 flex flex-col justify-center">

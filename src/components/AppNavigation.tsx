@@ -32,16 +32,6 @@ export function AppNavigation() {
 
   return (
     <>
-      {/* Header */}
-      <header className="flex items-center justify-between px-5 pt-10 pb-3 bg-background/90 backdrop-blur-xl z-20 absolute top-0 w-full border-b border-border">
-        <span
-          className="text-xl font-bold tracking-tight text-foreground"
-          style={{ fontFamily: 'var(--font-display, system-ui)' }}
-        >
-          RecipeHub
-        </span>
-      </header>
-
       {/* FAB */}
       {showFab && (
         <button

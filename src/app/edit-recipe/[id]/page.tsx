@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Sparkles, Loader2, Save, ImagePlus, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -16,9 +16,11 @@ const AVAILABLE_TAGS = [
   "Schnell", "Meal Prep", "Vegan", "Vegetarisch", "High Protein", "Low Carb"
 ];
 
-export default function AddRecipe() {
+export default function EditRecipe({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
   const supabase = createClient();
+  const resolvedParams = use(params);
+  const recipeId = resolvedParams.id;
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -26,14 +28,50 @@ export default function AddRecipe() {
   const [prepTime, setPrepTime] = useState('15');
   const [cookTime, setCookTime] = useState('20');
   const [difficulty, setDifficulty] = useState('easy');
+  
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [originalImageUrl, setOriginalImageUrl] = useState<string | null>(null);
   
   const [rawText, setRawText] = useState('');
+  const [parsedIngredients, setParsedIngredients] = useState<any[]>([]);
+  
+  const [initialLoading, setInitialLoading] = useState(true);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [parsedIngredients, setParsedIngredients] = useState<any[]>([]);
   const [errorMsg, setErrorMsg] = useState('');
+
+  useEffect(() => {
+    fetchRecipe();
+  }, [recipeId]);
+
+  async function fetchRecipe() {
+    setInitialLoading(true);
+    const { data, error } = await supabase
+      .from('recipes')
+      .select('*')
+      .eq('id', recipeId)
+      .single();
+
+    if (data && !error) {
+      setTitle(data.title || '');
+      setDescription(data.description || '');
+      setSelectedTags(data.tags || []);
+      setPrepTime((data.prep_time || 0).toString());
+      setCookTime((data.cook_time || 0).toString());
+      setDifficulty(data.difficulty || 'easy');
+      setRawText(data.instructions || '');
+      setParsedIngredients(data.ingredients_data || []);
+      
+      if (data.image_url) {
+        setImagePreview(data.image_url);
+        setOriginalImageUrl(data.image_url);
+      }
+    } else {
+      setErrorMsg("Rezept konnte nicht geladen werden.");
+    }
+    setInitialLoading(false);
+  }
 
   const toggleTag = (tag: string) => {
     setSelectedTags(prev => 
@@ -83,13 +121,12 @@ export default function AddRecipe() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Nicht eingeloggt");
 
-      let finalImageUrl = null;
+      let finalImageUrl = originalImageUrl;
 
-      // 1. Upload image if exists
       if (imageFile) {
         const fileExt = imageFile.name.split('.').pop();
         const fileName = `${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
-        const { data: uploadData, error: uploadError } = await supabase.storage
+        const { error: uploadError } = await supabase.storage
           .from('recipe-images')
           .upload(`${user.id}/${fileName}`, imageFile);
           
@@ -100,10 +137,11 @@ export default function AddRecipe() {
           .getPublicUrl(`${user.id}/${fileName}`);
           
         finalImageUrl = publicUrlData.publicUrl;
+      } else if (!imagePreview) {
+        finalImageUrl = null;
       }
 
-      // 2. Insert Recipe
-      const { error } = await supabase.from('recipes').insert({
+      const { error } = await supabase.from('recipes').update({
         title,
         description,
         tags: selectedTags,
@@ -112,18 +150,25 @@ export default function AddRecipe() {
         prep_time: parseInt(prepTime) || 0,
         cook_time: parseInt(cookTime) || 0,
         difficulty,
-        image_url: finalImageUrl,
-        created_by: user.id
-      });
+        image_url: finalImageUrl
+      }).eq('id', recipeId);
 
       if (error) throw error;
-      router.push('/recipes');
+      router.push(`/recipes/${recipeId}`);
     } catch (err: any) {
       setErrorMsg(err.message);
     } finally {
       setSaving(false);
     }
   };
+
+  if (initialLoading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <Loader2 className="animate-spin text-foreground" />
+      </div>
+    );
+  }
 
   return (
     <div className="pb-10 h-full flex flex-col bg-background" style={{ fontFamily: 'var(--font-sans, system-ui)' }}>
@@ -138,7 +183,7 @@ export default function AddRecipe() {
         >
           <ArrowLeft className="h-5 w-5" />
         </button>
-        <h1 className="text-xl font-bold text-foreground pb-1.5" style={{ fontFamily: 'var(--font-display, system-ui)' }}>Neues Rezept</h1>
+        <h1 className="text-xl font-bold text-foreground pb-1.5" style={{ fontFamily: 'var(--font-display, system-ui)' }}>Rezept bearbeiten</h1>
       </div>
 
       <div className="px-5 py-6 space-y-6 flex-1 overflow-y-auto no-scrollbar">
@@ -163,7 +208,7 @@ export default function AddRecipe() {
           ) : (
             <label className="flex flex-col items-center justify-center cursor-pointer w-full h-full text-muted-foreground">
               <ImagePlus className="h-8 w-8 mb-2" />
-              <span className="text-sm font-semibold">Titelbild hochladen</span>
+              <span className="text-sm font-semibold">Titelbild ändern</span>
               <input type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
             </label>
           )}
@@ -258,13 +303,12 @@ export default function AddRecipe() {
               <Label className="text-foreground font-semibold text-lg">Zutaten & Zubereitung</Label>
             </div>
             <p className="text-xs text-muted-foreground font-medium mb-2">
-              Schreibe einfach den Text rein. Die KI zerlegt die Zutaten und berechnet Makros.
+              Ändere den Text und scanne neu, falls du Zutaten verändern möchtest.
             </p>
             
             <Textarea
               value={rawText}
               onChange={(e) => setRawText(e.target.value)}
-              placeholder="z.B. 2 Eier, 50g Haferflocken... Die Eier verquirlen und braten."
               className="bg-secondary border-none rounded-xl p-4 min-h-[120px] text-[15px]"
             />
             
@@ -273,15 +317,15 @@ export default function AddRecipe() {
               disabled={loading || !rawText.trim()}
               className="w-full h-12 rounded-xl text-[15px] font-bold shadow-md bg-foreground text-background"
             >
-              {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : "Zutaten & Makros scannen"}
+              {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : "Zutaten & Makros neu scannen"}
             </Button>
           </CardContent>
         </Card>
 
         {/* AI Results */}
         {parsedIngredients.length > 0 && (
-          <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4">
-            <h3 className="font-bold text-lg px-1">Erkannte Zutaten</h3>
+          <div className="space-y-4">
+            <h3 className="font-bold text-lg px-1">Aktuelle Zutaten</h3>
             <div className="bg-card rounded-2xl border border-border shadow-sm p-2 space-y-2">
               {parsedIngredients.map((ing, i) => (
                 <div key={i} className="flex flex-col p-3 rounded-xl bg-secondary/50">
@@ -303,7 +347,7 @@ export default function AddRecipe() {
               disabled={saving}
               className="w-full h-14 rounded-2xl text-[16px] font-bold bg-foreground text-background mt-4 shadow-lg"
             >
-              {saving ? <Loader2 className="h-5 w-5 animate-spin" /> : <><Save className="mr-2 h-5 w-5" /> Rezept speichern</>}
+              {saving ? <Loader2 className="h-5 w-5 animate-spin" /> : <><Save className="mr-2 h-5 w-5" /> Änderungen speichern</>}
             </Button>
           </div>
         )}

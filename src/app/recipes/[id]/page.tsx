@@ -85,7 +85,10 @@ export default function RecipeDetail({ params }: { params: Promise<{ id: string 
           
           <div className="flex gap-2">
             {isOwner && (
-              <button className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-white hover:bg-black/60 transition-colors">
+              <button 
+                onClick={() => router.push(`/edit-recipe/${recipeId}`)}
+                className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-white hover:bg-black/60 transition-colors"
+              >
                 <Edit className="h-4 w-4" />
               </button>
             )}
@@ -102,9 +105,13 @@ export default function RecipeDetail({ params }: { params: Promise<{ id: string 
         <div className="absolute bottom-0 w-full translate-y-6 px-5">
           <div className="bg-card border border-border shadow-lg rounded-3xl p-5 backdrop-blur-xl">
             {recipe.tags && recipe.tags.length > 0 && (
-              <span className="inline-block bg-foreground text-background text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-full mb-2">
-                {recipe.tags[0]}
-              </span>
+              <div className="flex flex-wrap gap-1.5 mb-2">
+                {recipe.tags.slice(0, 3).map((tag: string) => (
+                  <span key={tag} className="inline-block bg-foreground text-background text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-full">
+                    {tag}
+                  </span>
+                ))}
+              </div>
             )}
             <h1 className="text-2xl font-bold text-foreground leading-tight mb-1" style={{ fontFamily: 'var(--font-display, system-ui)' }}>
               {recipe.title}

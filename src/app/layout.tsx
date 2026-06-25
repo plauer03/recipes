@@ -49,7 +49,7 @@ export default function RootLayout({
         <Providers>
           <div className="w-full max-w-[450px] h-[100dvh] bg-[var(--background)] flex flex-col relative overflow-hidden shadow-2xl transition-colors duration-300">
             
-            <main className="flex-1 w-full relative overflow-y-auto no-scrollbar pt-20 pb-28">
+            <main className="flex-1 w-full relative overflow-y-auto no-scrollbar pb-28">
               {children}
             </main>
             
