@@ -363,6 +363,22 @@ export default function EditRecipe({ params }: { params: Promise<{ id: string }>
             </Button>
           </div>
         )}
+
+        <div className="pt-8 pb-4">
+          <Button 
+            onClick={async () => {
+              if (window.confirm("Bist du sicher, dass du dieses Rezept unwiderruflich löschen möchtest?")) {
+                setLoading(true);
+                await supabase.from('recipes').delete().eq('id', recipeId);
+                router.push('/');
+              }
+            }}
+            variant="destructive"
+            className="w-full h-14 rounded-2xl text-[16px] font-bold bg-destructive/10 text-destructive hover:bg-destructive/20 border-none shadow-none"
+          >
+            Rezept löschen
+          </Button>
+        </div>
       </div>
     </div>
   );
