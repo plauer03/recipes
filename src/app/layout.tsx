@@ -19,7 +19,7 @@ export const metadata: Metadata = {
   description: "Smart Recipe Manager & Tracker",
   appleWebApp: {
     capable: true,
-    statusBarStyle: "black-translucent",
+    statusBarStyle: "default",
     title: "Recipe Manager",
   },
 };
@@ -42,12 +42,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="de" suppressHydrationWarning className="h-full overflow-hidden">
+    <html lang="de" suppressHydrationWarning className="h-[100dvh] overflow-hidden">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased flex justify-center h-full bg-[var(--background)] transition-colors duration-300`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased flex justify-center h-[100dvh] bg-[var(--background)] transition-colors duration-300`}
       >
         <Providers>
-          <div className="w-full max-w-[450px] h-full bg-[var(--background)] flex flex-col relative overflow-hidden shadow-2xl transition-colors duration-300">
+          <div className="w-full max-w-[450px] h-[100dvh] bg-[var(--background)] flex flex-col relative overflow-hidden shadow-2xl transition-colors duration-300">
             <main className="flex-1 relative overflow-hidden">
               <div className="absolute inset-0 overflow-y-auto no-scrollbar p-4 pb-32 pt-[env(safe-area-inset-top)]">
                 {children}
