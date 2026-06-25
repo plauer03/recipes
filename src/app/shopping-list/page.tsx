@@ -12,9 +12,6 @@ export default function ShoppingListPage() {
 
   useEffect(() => {
     fetchItems();
-    return () => {
-      Object.values(timeoutRefs.current).forEach(clearTimeout);
-    };
   }, []);
 
   async function fetchItems() {
@@ -41,9 +38,9 @@ export default function ShoppingListPage() {
   const toggleItem = async (id: string, currentStatus: boolean) => {
     const newStatus = !currentStatus;
     setItems(items.map(item => item.id === id ? { ...item, is_checked: newStatus } : item));
-    await supabase.from('shopping_list').update({ is_checked: newStatus }).eq('id', id);
 
     if (newStatus) {
+      await supabase.from('shopping_list').update({ is_checked: true }).eq('id', id);
       timeoutRefs.current[id] = setTimeout(async () => {
         const { error } = await supabase.from('shopping_list').delete().eq('id', id);
         if (!error) {
@@ -51,6 +48,7 @@ export default function ShoppingListPage() {
         }
       }, 3000);
     } else {
+      await supabase.from('shopping_list').update({ is_checked: false }).eq('id', id);
       if (timeoutRefs.current[id]) {
         clearTimeout(timeoutRefs.current[id]);
         delete timeoutRefs.current[id];
@@ -68,23 +66,12 @@ export default function ShoppingListPage() {
 
   return (
     <div className="min-h-full pb-10" style={{ fontFamily: 'var(--font-sans, system-ui)' }}>
-      {/* Sticky Top Header with SafeArea */}
-      <header 
-        className="sticky top-0 z-20 flex items-end justify-between px-5 pb-3 bg-background/90 backdrop-blur-xl border-b border-border w-full"
-        style={{ paddingTop: 'max(env(safe-area-inset-top), 16px)' }}
-      >
-        <span
-          className="text-xl font-bold tracking-tight text-foreground"
-          style={{ fontFamily: 'var(--font-display, system-ui)' }}
-        >
-          Einkaufsliste
-        </span>
-        <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">
-          {items.filter(i => !i.is_checked).length} Offen
-        </span>
-      </header>
-
       <div className="px-5 pt-6 space-y-4">
+        {items.length > 0 && (
+          <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1 text-right">
+            {items.filter(i => !i.is_checked).length} Artikel offen
+          </p>
+        )}
         {items.length > 0 ? (
           <div className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden divide-y divide-border">
             {items.map((item) => (

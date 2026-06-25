@@ -146,19 +146,6 @@ export default function ProfilePage() {
 
   return (
     <div className="min-h-full pb-10 flex flex-col bg-background" style={{ fontFamily: 'var(--font-sans, system-ui)' }}>
-      {/* Sticky Top Header with SafeArea */}
-      <header 
-        className="sticky top-0 z-20 flex items-end justify-between px-5 pb-3 bg-background/90 backdrop-blur-xl border-b border-border w-full"
-        style={{ paddingTop: 'max(env(safe-area-inset-top), 16px)' }}
-      >
-        <span
-          className="text-xl font-bold tracking-tight text-foreground"
-          style={{ fontFamily: 'var(--font-display, system-ui)' }}
-        >
-          Einstellungen
-        </span>
-      </header>
-
       <div className="flex-1 overflow-y-auto no-scrollbar px-5 pt-6 space-y-6">
         <div className="bg-card p-6 rounded-3xl border border-border shadow-sm flex flex-col items-center text-center gap-4">
           <div className="w-24 h-24 rounded-full bg-foreground flex items-center justify-center text-background text-3xl font-bold uppercase shrink-0 shadow-lg overflow-hidden">

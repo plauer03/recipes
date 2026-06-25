@@ -121,32 +121,8 @@ export default function Home() {
 
   return (
     <div className="min-h-full pb-10" style={{ fontFamily: 'var(--font-sans, system-ui)' }}>
-      {/* Sticky Top Header with SafeArea */}
-      <header 
-        className="sticky top-0 z-20 flex items-end justify-between px-5 pb-3 bg-background/90 backdrop-blur-xl border-b border-border w-full"
-        style={{ paddingTop: 'max(env(safe-area-inset-top), 16px)' }}
-      >
-        <span
-          className="text-xl font-bold tracking-tight text-foreground"
-          style={{ fontFamily: 'var(--font-display, system-ui)' }}
-        >
-          RecipeHub
-        </span>
-      </header>
-
-      {/* Greeting */}
-      <div className="px-5 pt-6 pb-2">
-        <p className="text-sm font-semibold text-muted-foreground mb-1">Guten Appetit 👋</p>
-        <h2
-          className="text-3xl font-extrabold text-foreground leading-tight"
-          style={{ fontFamily: 'var(--font-display, system-ui)' }}
-        >
-          Was kochen wir<br />heute?
-        </h2>
-      </div>
-
       {/* Stats */}
-      <div className="px-5 mt-6 mb-8">
+      <div className="px-5 pt-6 mb-8">
         <div className="grid grid-cols-2 gap-4">
           <div className="bg-card rounded-2xl p-4 border border-border shadow-sm flex items-center gap-4">
             <div className="w-12 h-12 rounded-xl bg-foreground text-background flex items-center justify-center shrink-0">
