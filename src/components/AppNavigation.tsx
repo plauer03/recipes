@@ -33,22 +33,13 @@ export function AppNavigation() {
   return (
     <>
       {/* Header */}
-      <header className="flex items-center justify-between px-5 pt-12 pb-3 bg-background/80 backdrop-blur-xl z-20 absolute top-0 w-full border-b border-border">
+      <header className="flex items-center justify-between px-5 pt-10 pb-3 bg-background/90 backdrop-blur-xl z-20 absolute top-0 w-full border-b border-border">
         <span
           className="text-xl font-bold tracking-tight text-foreground"
           style={{ fontFamily: 'var(--font-display, system-ui)' }}
         >
           RecipeHub
         </span>
-        <button
-          onClick={() => setTheme(theme === "light" ? "dark" : "light")}
-          className="w-9 h-9 rounded-full flex items-center justify-center bg-secondary text-muted-foreground hover:text-foreground transition-colors"
-          aria-label="Theme wechseln"
-        >
-          {mounted && (
-            theme === "light" ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />
-          )}
-        </button>
       </header>
 
       {/* FAB */}

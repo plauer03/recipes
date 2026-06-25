@@ -8,7 +8,13 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { createClient } from '@/lib/supabase/client';
+
+const AVAILABLE_TAGS = [
+  "Frühstück", "Hauptspeise", "Beilage", "Snack", "Dessert", 
+  "Schnell", "Meal Prep", "Vegan", "Vegetarisch", "High Protein", "Low Carb"
+];
 
 export default function AddRecipe() {
   const router = useRouter();
@@ -17,8 +23,11 @@ export default function AddRecipe() {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('');
-  const [rawText, setRawText] = useState('');
+  const [prepTime, setPrepTime] = useState('15');
+  const [cookTime, setCookTime] = useState('20');
+  const [difficulty, setDifficulty] = useState('easy');
   
+  const [rawText, setRawText] = useState('');
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [parsedIngredients, setParsedIngredients] = useState<any[]>([]);
@@ -62,8 +71,11 @@ export default function AddRecipe() {
         title,
         description,
         tags: category ? [category] : [],
-        instructions: rawText, // we just save the raw text as instructions for now
+        instructions: rawText,
         ingredients_data: parsedIngredients,
+        prep_time: parseInt(prepTime) || 0,
+        cook_time: parseInt(cookTime) || 0,
+        difficulty,
         created_by: user.id
       });
 
@@ -79,7 +91,7 @@ export default function AddRecipe() {
   return (
     <div className="pb-10 h-full flex flex-col bg-background" style={{ fontFamily: 'var(--font-sans, system-ui)' }}>
       {/* Header */}
-      <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-xl px-6 py-4 border-b border-border flex items-center gap-3">
+      <div className="sticky top-0 z-10 bg-background/90 backdrop-blur-xl px-6 py-4 border-b border-border flex items-center gap-3">
         <button
           onClick={() => router.back()}
           className="w-10 h-10 rounded-full bg-secondary text-foreground flex items-center justify-center hover:scale-105 active:scale-95 transition-transform"
@@ -111,14 +123,52 @@ export default function AddRecipe() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="category" className="text-foreground font-semibold">Kategorie (Optional)</Label>
-              <Input
-                id="category"
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                placeholder="z.B. Frühstück"
-                className="bg-secondary border-none h-12 rounded-xl px-4 text-[15px]"
-              />
+              <Label className="text-foreground font-semibold">Kategorie</Label>
+              <Select value={category} onValueChange={setCategory}>
+                <SelectTrigger className="bg-secondary border-none h-12 rounded-xl px-4 text-[15px]">
+                  <SelectValue placeholder="Wähle eine Kategorie..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {AVAILABLE_TAGS.map(tag => (
+                    <SelectItem key={tag} value={tag}>{tag}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label className="text-foreground font-semibold">Vorbereitung (Min)</Label>
+                <Input
+                  type="number"
+                  value={prepTime}
+                  onChange={(e) => setPrepTime(e.target.value)}
+                  className="bg-secondary border-none h-12 rounded-xl px-4 text-[15px]"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-foreground font-semibold">Kochzeit (Min)</Label>
+                <Input
+                  type="number"
+                  value={cookTime}
+                  onChange={(e) => setCookTime(e.target.value)}
+                  className="bg-secondary border-none h-12 rounded-xl px-4 text-[15px]"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-foreground font-semibold">Schwierigkeit</Label>
+              <Select value={difficulty} onValueChange={setDifficulty}>
+                <SelectTrigger className="bg-secondary border-none h-12 rounded-xl px-4 text-[15px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="easy">Einfach</SelectItem>
+                  <SelectItem value="medium">Mittel</SelectItem>
+                  <SelectItem value="hard">Schwer</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-2">
@@ -135,28 +185,29 @@ export default function AddRecipe() {
         </Card>
 
         {/* AI Input */}
-        <Card className="border-primary/20 shadow-sm bg-primary/5">
+        <Card className="border-border shadow-sm bg-card">
           <CardContent className="p-5 space-y-4">
             <div className="flex items-center gap-2 mb-2">
-              <Sparkles className="w-5 h-5 text-primary" />
-              <Label className="text-foreground font-semibold text-lg">Zutaten (Smart Input)</Label>
+              <Sparkles className="w-5 h-5 text-foreground" />
+              <Label className="text-foreground font-semibold text-lg">Zutaten & Zubereitung</Label>
             </div>
-            <p className="text-xs text-muted-foreground font-medium mb-2">Schreibe einfach alles auf, was ins Rezept kommt. Die KI berechnet automatisch alle Kalorien und Makros.</p>
+            <p className="text-xs text-muted-foreground font-medium mb-2">
+              Schreibe einfach den Text rein. Die KI zerlegt die Zutaten und berechnet Makros.
+            </p>
             
             <Textarea
               value={rawText}
               onChange={(e) => setRawText(e.target.value)}
-              placeholder="z.B. 2 Eier, 50g Haferflocken, 1 Banane, 30g Proteinpulver"
-              className="bg-background border-border rounded-xl p-4 min-h-[120px] text-[15px] shadow-inner"
+              placeholder="z.B. 2 Eier, 50g Haferflocken... Die Eier verquirlen und braten."
+              className="bg-secondary border-none rounded-xl p-4 min-h-[120px] text-[15px]"
             />
             
             <Button 
               onClick={handleParse} 
               disabled={loading || !rawText.trim()}
-              className="w-full h-12 rounded-xl text-[15px] font-bold shadow-lg"
-              style={{ boxShadow: '0 4px 14px rgba(0,230,118,0.25)' }}
+              className="w-full h-12 rounded-xl text-[15px] font-bold shadow-md bg-foreground text-background"
             >
-              {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : "Makros & Nährwerte berechnen"}
+              {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : "Zutaten & Makros scannen"}
             </Button>
           </CardContent>
         </Card>
@@ -170,7 +221,7 @@ export default function AddRecipe() {
                 <div key={i} className="flex flex-col p-3 rounded-xl bg-secondary/50">
                   <div className="flex justify-between items-center mb-2">
                     <span className="font-bold text-sm text-foreground">{ing.amount} {ing.unit} {ing.name}</span>
-                    <span className="font-black text-primary text-sm">{ing.calories} kcal</span>
+                    <span className="font-black text-foreground text-sm">{ing.calories} kcal</span>
                   </div>
                   <div className="flex gap-4 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                     <span>P: <span className="text-foreground">{ing.protein}g</span></span>
@@ -184,7 +235,7 @@ export default function AddRecipe() {
             <Button 
               onClick={handleSave} 
               disabled={saving}
-              className="w-full h-14 rounded-2xl text-[16px] font-bold bg-foreground text-background hover:bg-foreground/90 mt-4"
+              className="w-full h-14 rounded-2xl text-[16px] font-bold bg-foreground text-background mt-4"
             >
               {saving ? <Loader2 className="h-5 w-5 animate-spin" /> : <><Save className="mr-2 h-5 w-5" /> Rezept speichern</>}
             </Button>
