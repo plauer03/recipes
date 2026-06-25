@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Clock, BookOpen, ArrowRight, ChefHat, Loader2, Heart } from "lucide-react";
+import { Clock, BookOpen, ChefHat, Loader2, Heart, Sparkles, ArrowRight } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
 export interface Recipe {
@@ -24,6 +24,8 @@ export interface Recipe {
   [key: string]: any;
 }
 
+const INSPO_TAGS = ["Abendessen", "High Protein", "Frühstück", "Schnell", "Vegan", "Snack"];
+
 export default function Home() {
   const router = useRouter();
   const supabase = createClient();
@@ -32,6 +34,11 @@ export default function Home() {
   const [feed, setFeed] = useState<Recipe[]>([]);
   const [favorites, setFavorites] = useState<Recipe[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Inspo State
+  const [activeTag, setActiveTag] = useState<string | null>(null);
+  const [inspoLoading, setInspoLoading] = useState(false);
+  const [inspoRecipe, setInspoRecipe] = useState<Recipe | null>(null);
 
   useEffect(() => {
     fetchData();
@@ -81,6 +88,29 @@ export default function Home() {
     setLoading(false);
   }
 
+  const handleInspo = async (tag: string) => {
+    if (activeTag === tag) {
+      setActiveTag(null);
+      setInspoRecipe(null);
+      return;
+    }
+    
+    setActiveTag(tag);
+    setInspoLoading(true);
+    // Fetch all recipes with this tag
+    const { data } = await supabase.from('recipes')
+      .select('*, profiles:created_by(name)')
+      .contains('tags', [tag]);
+      
+    if (data && data.length > 0) {
+      const random = data[Math.floor(Math.random() * data.length)];
+      setInspoRecipe(random);
+    } else {
+      setInspoRecipe(null);
+    }
+    setInspoLoading(false);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -105,70 +135,18 @@ export default function Home() {
       </header>
 
       {/* Greeting */}
-      <div className="px-5 pt-6 pb-6">
+      <div className="px-5 pt-6 pb-2">
         <p className="text-sm font-semibold text-muted-foreground mb-1">Guten Appetit 👋</p>
         <h2
-          className="text-3xl font-extrabold text-foreground leading-tight mb-4"
+          className="text-3xl font-extrabold text-foreground leading-tight"
           style={{ fontFamily: 'var(--font-display, system-ui)' }}
         >
-          Was kochst du<br />heute?
+          Was kochen wir<br />heute?
         </h2>
-        <button
-          onClick={() => router.push('/add-recipe')}
-          className="inline-flex items-center gap-2 bg-foreground text-background px-5 py-2.5 rounded-full text-sm font-semibold active:scale-95 transition-all shadow-md"
-        >
-          Neues Rezept
-          <ArrowRight className="h-4 w-4" />
-        </button>
       </div>
 
-      {/* Own Recipes Square Cards Slider */}
-      {recipes.length > 0 && (
-        <div className="mb-8">
-          <div className="flex items-center justify-between px-5 mb-4">
-            <h3 className="text-lg font-bold text-foreground" style={{ fontFamily: 'var(--font-display, system-ui)' }}>
-              Deine Rezepte
-            </h3>
-            <button onClick={() => router.push('/recipes')} className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-              Alle
-            </button>
-          </div>
-          <div className="flex overflow-x-auto px-5 pb-4 gap-4 snap-x snap-mandatory no-scrollbar">
-            {recipes.map((recipe) => (
-              <button
-                key={recipe.id}
-                onClick={() => router.push(`/recipes/${recipe.id}`)}
-                className="snap-start shrink-0 w-44 flex flex-col bg-card rounded-2xl overflow-hidden border border-border shadow-sm active:scale-95 transition-all text-left"
-              >
-                <div className="w-full h-36 bg-muted relative">
-                  {recipe.image_url ? (
-                    <img src={recipe.image_url} alt={recipe.title} className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <ChefHat className="h-10 w-10 text-muted-foreground opacity-50" />
-                    </div>
-                  )}
-                  {recipe.is_favorite && (
-                    <div className="absolute top-2 right-2 bg-background/80 backdrop-blur-sm p-1.5 rounded-full">
-                      <Heart className="h-4 w-4 fill-destructive text-destructive" />
-                    </div>
-                  )}
-                </div>
-                <div className="p-3 flex-1 flex flex-col">
-                  <p className="font-bold text-foreground text-[15px] mb-1 line-clamp-2 leading-tight">{recipe.title}</p>
-                  <div className="mt-auto flex items-center gap-1.5 text-xs text-muted-foreground font-medium pt-2">
-                    <Clock className="h-3.5 w-3.5" />
-                    {(recipe.prep_time || 0) + (recipe.cook_time || 0)} Min
-                  </div>
-                </div>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* Stats */}
-      <div className="px-5 mb-8">
+      <div className="px-5 mt-6 mb-8">
         <div className="grid grid-cols-2 gap-4">
           <div className="bg-card rounded-2xl p-4 border border-border shadow-sm flex items-center gap-4">
             <div className="w-12 h-12 rounded-xl bg-foreground text-background flex items-center justify-center shrink-0">
@@ -191,8 +169,76 @@ export default function Home() {
         </div>
       </div>
 
+      {/* Inspo Widget */}
+      <div className="mb-8">
+        <div className="px-5 mb-4 flex items-center gap-2">
+          <Sparkles className="h-5 w-5 text-foreground" />
+          <h3 className="text-lg font-bold text-foreground" style={{ fontFamily: 'var(--font-display, system-ui)' }}>
+            Inspiration finden
+          </h3>
+        </div>
+        <div className="flex overflow-x-auto px-5 pb-4 gap-2 snap-x snap-mandatory no-scrollbar">
+          {INSPO_TAGS.map(tag => (
+            <button
+              key={tag}
+              onClick={() => handleInspo(tag)}
+              className={`snap-start shrink-0 px-4 py-2 rounded-full text-sm font-bold transition-all shadow-sm ${
+                activeTag === tag 
+                  ? 'bg-foreground text-background scale-105' 
+                  : 'bg-card text-foreground border border-border hover:bg-secondary'
+              }`}
+            >
+              {tag}
+            </button>
+          ))}
+        </div>
+
+        {/* Inspo Result */}
+        {activeTag && (
+          <div className="px-5 mb-4 animate-in fade-in slide-in-from-top-2">
+            {inspoLoading ? (
+              <div className="w-full h-32 bg-secondary rounded-2xl flex items-center justify-center">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : inspoRecipe ? (
+              <button
+                onClick={() => router.push(`/recipes/${inspoRecipe.id}`)}
+                className="w-full bg-card rounded-2xl overflow-hidden border border-border shadow-md active:scale-[0.98] transition-all text-left relative"
+              >
+                <div className="absolute top-3 left-3 bg-foreground text-background text-[10px] font-bold uppercase px-2 py-1 rounded-full z-10">
+                  {activeTag}
+                </div>
+                <div className="w-full h-40 bg-muted relative">
+                  {inspoRecipe.image_url ? (
+                    <img src={inspoRecipe.image_url} alt={inspoRecipe.title} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <ChefHat className="h-10 w-10 text-muted-foreground opacity-50" />
+                    </div>
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                  <div className="absolute bottom-3 left-4 right-4 flex items-end justify-between">
+                    <div>
+                      <h4 className="font-bold text-white text-lg leading-tight mb-1">{inspoRecipe.title}</h4>
+                      <p className="text-white/80 text-xs font-medium">Von {inspoRecipe.profiles?.name || "Freund"}</p>
+                    </div>
+                    <div className="w-8 h-8 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center">
+                      <ArrowRight className="h-4 w-4 text-white" />
+                    </div>
+                  </div>
+                </div>
+              </button>
+            ) : (
+              <div className="w-full py-8 px-4 bg-secondary rounded-2xl text-center border border-border border-dashed">
+                <p className="text-sm font-medium text-muted-foreground">Leider kein Rezept für "{activeTag}" gefunden.</p>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
       {/* Feed (Small Horizontal Cards) */}
-      <div className="mb-7">
+      <div className="mb-7 mt-4 border-t border-border/50 pt-6">
         <div className="flex items-center justify-between px-5 mb-4">
           <h3 className="text-lg font-bold text-foreground" style={{ fontFamily: 'var(--font-display, system-ui)' }}>
             Aktivität (Dein Feed)

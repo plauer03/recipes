@@ -5,9 +5,9 @@ import { useTheme } from "next-themes";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { 
-  User, Mail, Settings, LogOut, 
-  ChevronRight, Moon, ShieldCheck,
-  Plus, X, Apple, Loader2, Search, Camera, UserCheck
+  User, LogOut, 
+  ChevronRight, Moon, 
+  Loader2, Camera
 } from "lucide-react";
 
 export default function ProfilePage() {
@@ -18,7 +18,6 @@ export default function ProfilePage() {
   
   const [profile, setProfile] = useState<any>(null);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
-  const [isManagingIngredients, setIsManagingIngredients] = useState(false);
   const [newName, setNewName] = useState("");
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -31,16 +30,8 @@ export default function ProfilePage() {
   const [isFollowingListOpen, setIsFollowingListOpen] = useState(false);
   const [isFollowersListOpen, setIsFollowersListOpen] = useState(false);
 
-  // Ingredients state
-  const [ingredients, setIngredients] = useState<any[]>([]);
-  const [newIngName, setNewIngName] = useState("");
-  const [newIngCals, setNewIngCals] = useState("");
-  const [newIngUnitType, setNewIngUnitType] = useState("g");
-  const [useExternalDb, setUseExternalDb] = useState(false);
-
   useEffect(() => {
     fetchProfile();
-    fetchIngredients();
     fetchSocialStats();
   }, []);
 
@@ -51,7 +42,6 @@ export default function ProfilePage() {
       if (data) {
         setProfile({ ...data, email: user.email });
         setNewName(data.name || "");
-        setUseExternalDb(data.use_external_db || false);
       } else {
         setProfile({ email: user.email, name: "" });
       }
@@ -92,20 +82,6 @@ export default function ProfilePage() {
     fetchSocialStats();
   }
 
-  const toggleExternalDb = async () => {
-    const newVal = !useExternalDb;
-    setUseExternalDb(newVal);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      await supabase.from('profiles').update({ use_external_db: newVal }).eq('id', user.id);
-    }
-  };
-
-  async function fetchIngredients() {
-    const { data } = await supabase.from('ingredients').select('*').order('name');
-    if (data) setIngredients(data);
-  }
-
   const handleLogout = async () => {
     await supabase.auth.signOut();
     router.push("/login");
@@ -128,27 +104,6 @@ export default function ProfilePage() {
     setLoading(false);
   }
 
-  async function addIngredient() {
-    if (!newIngName) return;
-    const { data: { user } } = await supabase.auth.getUser();
-    const { error } = await supabase.from('ingredients').insert([{
-      name: newIngName,
-      calories_per_100g: Number(newIngCals) || 0,
-      unit_type: newIngUnitType,
-      created_by: user?.id
-    }]);
-    if (!error) {
-      setNewIngName("");
-      setNewIngCals("");
-      fetchIngredients();
-    }
-  }
-
-  async function deleteIngredient(id: string) {
-    await supabase.from('ingredients').delete().eq('id', id);
-    fetchIngredients();
-  }
-
   async function handleAvatarUpload(event: React.ChangeEvent<HTMLInputElement>) {
     try {
       setUploading(true);
@@ -167,7 +122,6 @@ export default function ProfilePage() {
       const { error: uploadError } = await supabase.storage
         .from('avatars')
         .upload(filePath, file);
-
 
       if (uploadError) throw uploadError;
 
@@ -191,14 +145,23 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="space-y-8 fade-in h-full flex flex-col overflow-hidden">
-      <header className="pt-4 px-1 shrink-0">
-        <h1 className="text-3xl font-bold tracking-tight">Einstellungen</h1>
+    <div className="min-h-full pb-10 flex flex-col bg-background" style={{ fontFamily: 'var(--font-sans, system-ui)' }}>
+      {/* Sticky Top Header with SafeArea */}
+      <header 
+        className="sticky top-0 z-20 flex items-end justify-between px-5 pb-3 bg-background/90 backdrop-blur-xl border-b border-border w-full"
+        style={{ paddingTop: 'max(env(safe-area-inset-top), 16px)' }}
+      >
+        <span
+          className="text-xl font-bold tracking-tight text-foreground"
+          style={{ fontFamily: 'var(--font-display, system-ui)' }}
+        >
+          Einstellungen
+        </span>
       </header>
 
-      <div className="flex-1 overflow-y-auto no-scrollbar pb-20 space-y-6">
-        <div className="bg-[var(--card)] p-6 rounded-[32px] border border-[var(--border)]/10 shadow-sm flex flex-col items-center text-center gap-4 mx-1">
-          <div className="w-24 h-24 rounded-full bg-[var(--primary)] flex items-center justify-center text-white text-3xl font-bold uppercase shrink-0 shadow-lg overflow-hidden">
+      <div className="flex-1 overflow-y-auto no-scrollbar px-5 pt-6 space-y-6">
+        <div className="bg-card p-6 rounded-3xl border border-border shadow-sm flex flex-col items-center text-center gap-4">
+          <div className="w-24 h-24 rounded-full bg-foreground flex items-center justify-center text-background text-3xl font-bold uppercase shrink-0 shadow-lg overflow-hidden">
             {profile?.avatar_url ? (
               <img src={profile.avatar_url} alt="Profile" className="w-full h-full object-cover" />
             ) : (
@@ -207,66 +170,41 @@ export default function ProfilePage() {
           </div>
           
           <div className="space-y-1">
-            <h2 className="text-2xl font-black">{profile?.name || "Name festlegen"}</h2>
+            <h2 className="text-2xl font-black text-foreground">{profile?.name || "Name festlegen"}</h2>
             <div className="flex items-center gap-6 justify-center pt-2">
-               <div className="flex flex-col ios-active-scale cursor-pointer" onClick={() => setIsFollowersListOpen(true)}>
-                  <span className="text-lg font-black leading-none">{followerCount}</span>
-                  <span className="text-[10px] font-bold text-[var(--muted-foreground)] uppercase tracking-widest">Follower</span>
+               <div className="flex flex-col active:scale-95 transition-transform cursor-pointer" onClick={() => setIsFollowersListOpen(true)}>
+                  <span className="text-lg font-black leading-none text-foreground">{followerCount}</span>
+                  <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">Follower</span>
                </div>
-               <div className="w-px h-6 bg-[var(--border)] opacity-20" />
-               <div className="flex flex-col ios-active-scale cursor-pointer" onClick={() => setIsFollowingListOpen(true)}>
-                  <span className="text-lg font-black leading-none">{followingCount}</span>
-                  <span className="text-[10px] font-bold text-[var(--muted-foreground)] uppercase tracking-widest">Gefolgt</span>
+               <div className="w-px h-6 bg-border" />
+               <div className="flex flex-col active:scale-95 transition-transform cursor-pointer" onClick={() => setIsFollowingListOpen(true)}>
+                  <span className="text-lg font-black leading-none text-foreground">{followingCount}</span>
+                  <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">Gefolgt</span>
                </div>
             </div>
           </div>
 
           <button 
             onClick={() => setIsEditingProfile(true)}
-            className="w-full bg-[var(--muted)]/50 py-3 rounded-2xl text-xs font-bold uppercase tracking-widest ios-active-scale"
+            className="w-full bg-secondary py-3 rounded-2xl text-xs font-bold text-foreground uppercase tracking-widest active:scale-[0.98] transition-transform"
           >
             Profil bearbeiten
           </button>
         </div>
 
         <div className="space-y-2">
-          <h3 className="text-[11px] font-bold text-[var(--muted-foreground)] uppercase tracking-widest px-4">Management</h3>
-          <div className="bg-[var(--card)] rounded-2xl overflow-hidden border border-[var(--border)]/10 shadow-sm">
-            <button 
-              onClick={() => setIsManagingIngredients(true)}
-              className="w-full flex items-center gap-4 p-4 ios-active-scale border-b border-[var(--border)]/10 active:bg-[var(--muted)]/10 transition-colors"
-            >
-              <div className="w-8 h-8 rounded-lg bg-orange-100 dark:bg-orange-900/30 text-orange-600 flex items-center justify-center shrink-0">
-                <Apple size={18} />
-              </div>
-              <span className="flex-1 text-left font-semibold">Zutaten Datenbank</span>
-              <ChevronRight size={18} className="text-[var(--muted-foreground)] opacity-30" />
-            </button>
-            <div className="flex items-center gap-4 p-4 border-b border-[var(--border)]/10">
-              <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/30 text-blue-600 flex items-center justify-center shrink-0">
-                <Search size={18} />
-              </div>
-              <div className="flex-1 text-left">
-                <p className="font-semibold">Ernährungsdatenbank</p>
-                <p className="text-[10px] text-[var(--muted-foreground)] font-bold uppercase tracking-tight">BLS 4.0</p>
-              </div>
-              <button 
-                onClick={toggleExternalDb}
-                className={`w-11 h-6 rounded-full transition-all relative ${useExternalDb ? 'bg-green-500' : 'bg-gray-200 dark:bg-gray-700'}`}
-              >
-                <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all shadow-sm ${useExternalDb ? 'left-6' : 'left-1'}`} />
-              </button>
-            </div>
-            <div className="flex items-center gap-4 p-4">
-              <div className="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 flex items-center justify-center shrink-0">
+          <h3 className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest px-2">App</h3>
+          <div className="bg-card rounded-2xl overflow-hidden border border-border shadow-sm">
+            <div className="flex items-center gap-4 p-4 border-b border-border/50">
+              <div className="w-8 h-8 rounded-lg bg-secondary text-foreground flex items-center justify-center shrink-0">
                 <Moon size={18} />
               </div>
-              <span className="flex-1 text-left font-semibold">Dunkelmodus</span>
+              <span className="flex-1 text-left font-semibold text-foreground">Dunkelmodus</span>
               <button 
                 onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-                className={`w-11 h-6 rounded-full transition-all relative ${theme === 'dark' ? 'bg-green-500' : 'bg-gray-200 dark:bg-gray-700'}`}
+                className={`w-11 h-6 rounded-full transition-all relative ${theme === 'dark' ? 'bg-foreground' : 'bg-secondary'}`}
               >
-                <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all shadow-sm ${theme === 'dark' ? 'left-6' : 'left-1'}`} />
+                <div className={`absolute top-1 w-4 h-4 rounded-full transition-all shadow-sm ${theme === 'dark' ? 'left-6 bg-background' : 'left-1 bg-foreground'}`} />
               </button>
             </div>
           </div>
@@ -274,7 +212,7 @@ export default function ProfilePage() {
 
         <button 
           onClick={handleLogout}
-          className="w-full bg-[var(--card)] rounded-2xl p-4 flex items-center gap-4 ios-active-scale border border-[var(--border)]/10 text-red-500 font-bold justify-center shadow-sm active:bg-red-50 dark:active:bg-red-950/20"
+          className="w-full bg-card rounded-2xl p-4 flex items-center gap-4 active:scale-[0.98] transition-transform border border-border text-destructive font-bold justify-center shadow-sm"
         >
           <LogOut size={18} />
           Abmelden
@@ -285,22 +223,22 @@ export default function ProfilePage() {
       {isEditingProfile && (
         <div className="fixed inset-0 z-[100] flex items-end justify-center">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setIsEditingProfile(false)} />
-          <div className="relative w-full max-w-[450px] bg-[var(--background)] rounded-t-[32px] p-6 h-[90dvh] flex flex-col gap-6 fade-in shadow-2xl">
-            <div className="w-10 h-1.5 bg-[var(--muted)] rounded-full mx-auto shrink-0" />
+          <div className="relative w-full max-w-[450px] bg-background rounded-t-[32px] p-6 h-[90dvh] flex flex-col gap-6 animate-in slide-in-from-bottom-4 shadow-2xl">
+            <div className="w-10 h-1.5 bg-muted rounded-full mx-auto shrink-0" />
             <div className="flex justify-between items-center shrink-0">
-              <h2 className="text-2xl font-bold">Profil</h2>
-              <button onClick={saveProfile} disabled={loading || uploading} className="text-[var(--primary)] font-bold px-2 ios-active-scale">
+              <h2 className="text-2xl font-bold text-foreground">Profil bearbeiten</h2>
+              <button onClick={saveProfile} disabled={loading || uploading} className="text-foreground font-bold px-2 active:scale-95 transition-transform">
                 {loading ? <Loader2 className="animate-spin" size={18} /> : "Speichern"}
               </button>
             </div>
             <div className="space-y-8 flex-1 overflow-y-auto no-scrollbar">
               <div className="flex flex-col items-center gap-4">
                 <div className="relative">
-                  <div className="w-24 h-24 rounded-full bg-[var(--muted)] flex items-center justify-center overflow-hidden border-2 border-[var(--border)]/10 shadow-inner">
+                  <div className="w-24 h-24 rounded-full bg-secondary flex items-center justify-center overflow-hidden border border-border shadow-inner">
                     {profile?.avatar_url ? (
                       <img src={profile.avatar_url} alt="Profile" className="w-full h-full object-cover" />
                     ) : (
-                      <User size={40} className="text-[var(--muted-foreground)]" />
+                      <User size={40} className="text-muted-foreground" />
                     )}
                     {uploading && (
                       <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
@@ -311,17 +249,17 @@ export default function ProfilePage() {
                   <button 
                     onClick={() => fileInputRef.current?.click()}
                     disabled={uploading}
-                    className="absolute bottom-0 right-0 w-8 h-8 bg-[var(--primary)] rounded-full border-2 border-white dark:border-[var(--background)] shadow-lg flex items-center justify-center text-white active:scale-90 transition-transform"
+                    className="absolute bottom-0 right-0 w-8 h-8 bg-foreground rounded-full border-2 border-background shadow-lg flex items-center justify-center text-background active:scale-90 transition-transform"
                   >
                     <Camera size={14} />
                   </button>
                 </div>
-                <p className="text-[10px] font-bold text-[var(--muted-foreground)] uppercase tracking-widest">Profilbild ändern</p>
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Profilbild ändern</p>
                 <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleAvatarUpload} disabled={uploading} />
               </div>
               <div className="space-y-2">
-                <label className="text-[11px] font-bold text-[var(--muted-foreground)] uppercase tracking-widest px-1">Anzeigename</label>
-                <input value={newName} onChange={e => setNewName(e.target.value)} className="w-full bg-[var(--card)] p-4 rounded-2xl outline-none font-bold text-lg border border-[var(--border)]/5 shadow-sm" placeholder="Dein Name" />
+                <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest px-1">Anzeigename</label>
+                <input value={newName} onChange={e => setNewName(e.target.value)} className="w-full bg-secondary p-4 rounded-xl outline-none font-bold text-lg text-foreground border-none" placeholder="Dein Name" />
               </div>
             </div>
           </div>
@@ -330,35 +268,38 @@ export default function ProfilePage() {
 
       {/* Followers List Modal */}
       {isFollowersListOpen && (
-        <div className="fixed inset-0 z-[100] flex items-end justify-center px-0">
+        <div className="fixed inset-0 z-[100] flex items-end justify-center">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setIsFollowersListOpen(false)} />
-          <div className="relative w-full max-w-[450px] bg-[var(--background)] rounded-t-[32px] p-6 h-[90dvh] flex flex-col gap-6 fade-in shadow-2xl overflow-hidden">
-            <div className="w-10 h-1.5 bg-[var(--muted)] rounded-full mx-auto shrink-0" />
+          <div className="relative w-full max-w-[450px] bg-background rounded-t-[32px] p-6 h-[90dvh] flex flex-col gap-6 animate-in slide-in-from-bottom-4 shadow-2xl overflow-hidden">
+            <div className="w-10 h-1.5 bg-muted rounded-full mx-auto shrink-0" />
             <div className="flex justify-between items-center shrink-0">
-              <h2 className="text-2xl font-bold">Follower</h2>
-              <button onClick={() => setIsFollowersListOpen(false)} className="text-[var(--primary)] font-bold">Fertig</button>
+              <h2 className="text-2xl font-bold text-foreground">Follower</h2>
+              <button onClick={() => setIsFollowersListOpen(false)} className="text-foreground font-bold active:opacity-50">Fertig</button>
             </div>
-            <div className="flex-1 overflow-y-auto no-scrollbar space-y-2 pb-10">
+            <div className="flex-1 overflow-y-auto no-scrollbar space-y-3 pb-10">
               {followerList.length > 0 ? followerList.map((f) => {
                 const isFollowingBack = followingList.some(fol => fol.following_id === f.follower_id);
                 return (
-                  <div key={f.follower_id} className="bg-[var(--card)] p-4 rounded-2xl flex justify-between items-center border border-[var(--border)]/5 shadow-sm">
+                  <div key={f.follower_id} className="bg-card p-4 rounded-2xl flex justify-between items-center border border-border shadow-sm">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-[var(--primary)]/10 flex items-center justify-center overflow-hidden shrink-0">
-                        {f.profiles?.avatar_url ? <img src={f.profiles.avatar_url} className="w-full h-full object-cover" /> : f.profiles?.name?.[0]}
+                      <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center overflow-hidden shrink-0">
+                        {f.profiles?.avatar_url ? <img src={f.profiles.avatar_url} className="w-full h-full object-cover" /> : <span className="font-bold text-foreground">{f.profiles?.name?.[0]}</span>}
                       </div>
-                      <span className="font-bold">{f.profiles?.name}</span>
+                      <span className="font-bold text-foreground">{f.profiles?.name}</span>
                     </div>
                     <button 
                       onClick={() => toggleFollow(f.follower_id, isFollowingBack)}
-                      className={`font-bold text-xs uppercase px-4 py-2 rounded-xl transition-all ${isFollowingBack ? 'bg-[var(--muted)]/50 text-[var(--foreground)]' : 'bg-[var(--primary)] text-white shadow-md'}`}
+                      className={`font-bold text-xs uppercase px-4 py-2 rounded-xl transition-all ${isFollowingBack ? 'bg-secondary text-foreground' : 'bg-foreground text-background shadow-md'}`}
                     >
                       {isFollowingBack ? 'Folge ich' : 'Folgen'}
                     </button>
                   </div>
                 );
               }) : (
-                <div className="py-20 text-center opacity-30"><p className="text-sm font-bold uppercase">Noch keine Follower</p></div>
+                <div className="py-20 text-center flex flex-col items-center">
+                  <User size={48} className="text-muted-foreground opacity-30 mb-4" />
+                  <p className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Noch keine Follower</p>
+                </div>
               )}
             </div>
           </div>
@@ -367,69 +308,36 @@ export default function ProfilePage() {
 
       {/* Following List Modal */}
       {isFollowingListOpen && (
-        <div className="fixed inset-0 z-[100] flex items-end justify-center px-0">
+        <div className="fixed inset-0 z-[100] flex items-end justify-center">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setIsFollowingListOpen(false)} />
-          <div className="relative w-full max-w-[450px] bg-[var(--background)] rounded-t-[32px] p-6 h-[90dvh] flex flex-col gap-6 fade-in shadow-2xl overflow-hidden">
-            <div className="w-10 h-1.5 bg-[var(--muted)] rounded-full mx-auto shrink-0" />
+          <div className="relative w-full max-w-[450px] bg-background rounded-t-[32px] p-6 h-[90dvh] flex flex-col gap-6 animate-in slide-in-from-bottom-4 shadow-2xl overflow-hidden">
+            <div className="w-10 h-1.5 bg-muted rounded-full mx-auto shrink-0" />
             <div className="flex justify-between items-center shrink-0">
-              <h2 className="text-2xl font-bold">Folge ich</h2>
-              <button onClick={() => setIsFollowingListOpen(false)} className="text-[var(--primary)] font-bold">Fertig</button>
+              <h2 className="text-2xl font-bold text-foreground">Folge ich</h2>
+              <button onClick={() => setIsFollowingListOpen(false)} className="text-foreground font-bold active:opacity-50">Fertig</button>
             </div>
-            <div className="flex-1 overflow-y-auto no-scrollbar space-y-2 pb-10">
+            <div className="flex-1 overflow-y-auto no-scrollbar space-y-3 pb-10">
               {followingList.length > 0 ? followingList.map((f) => (
-                <div key={f.following_id} className="bg-[var(--card)] p-4 rounded-2xl flex justify-between items-center border border-[var(--border)]/5 shadow-sm">
+                <div key={f.following_id} className="bg-card p-4 rounded-2xl flex justify-between items-center border border-border shadow-sm">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-[var(--primary)]/10 flex items-center justify-center overflow-hidden shrink-0">
-                      {f.profiles?.avatar_url ? <img src={f.profiles.avatar_url} className="w-full h-full object-cover" /> : f.profiles?.name?.[0]}
+                    <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center overflow-hidden shrink-0">
+                      {f.profiles?.avatar_url ? <img src={f.profiles.avatar_url} className="w-full h-full object-cover" /> : <span className="font-bold text-foreground">{f.profiles?.name?.[0]}</span>}
                     </div>
-                    <span className="font-bold">{f.profiles?.name}</span>
+                    <span className="font-bold text-foreground">{f.profiles?.name}</span>
                   </div>
-                  <button onClick={() => toggleFollow(f.following_id, true)} className="text-red-500 font-bold text-xs uppercase bg-red-50 dark:bg-red-950/30 px-3 py-2 rounded-xl active:scale-95 transition-transform">Entfolgen</button>
+                  <button onClick={() => toggleFollow(f.following_id, true)} className="text-destructive font-bold text-xs uppercase bg-destructive/10 px-3 py-2 rounded-xl active:scale-95 transition-transform">Entfolgen</button>
                 </div>
               )) : (
-                <div className="py-20 text-center opacity-30"><p className="text-sm font-bold uppercase">Du folgst noch niemandem</p></div>
+                <div className="py-20 text-center flex flex-col items-center">
+                  <User size={48} className="text-muted-foreground opacity-30 mb-4" />
+                  <p className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Du folgst noch niemandem</p>
+                </div>
               )}
             </div>
           </div>
         </div>
       )}
 
-      {/* Ingredients Management Modal */}
-      {isManagingIngredients && (
-        <div className="fixed inset-0 z-[100] flex items-end justify-center px-0">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setIsManagingIngredients(false)} />
-          <div className="relative w-full max-w-[450px] bg-[var(--background)] rounded-t-[32px] p-6 h-[90dvh] flex flex-col gap-6 fade-in shadow-2xl overflow-hidden">
-            <div className="w-10 h-1.5 bg-[var(--muted)] rounded-full mx-auto shrink-0" />
-            <div className="flex justify-between items-center shrink-0">
-              <h2 className="text-2xl font-bold">Zutaten</h2>
-              <button onClick={() => setIsManagingIngredients(false)} className="text-[var(--primary)] font-bold active:opacity-50 px-2">Fertig</button>
-            </div>
-
-            <div className="bg-[var(--card)] p-4 rounded-2xl border border-[var(--border)]/10 shadow-sm space-y-3 shrink-0">
-              <input value={newIngName} onChange={e => setNewIngName(e.target.value)} placeholder="Name der Zutat" className="w-full bg-[var(--muted)]/20 p-3.5 rounded-xl outline-none font-bold text-sm" />
-              <div className="flex gap-2 h-12">
-                <input type="number" value={newIngCals} onChange={e => setNewIngCals(e.target.value)} placeholder={`kcal / 100${newIngUnitType}`} className="flex-1 bg-[var(--muted)]/20 px-4 rounded-xl outline-none font-bold text-sm" />
-                <select value={newIngUnitType} onChange={e => setNewIngUnitType(e.target.value)} className="w-20 bg-[var(--muted)]/20 px-3 rounded-xl outline-none font-bold text-sm appearance-none text-center border-none">
-                  <option value="g">g</option>
-                  <option value="ml">ml</option>
-                </select>
-                <button onClick={addIngredient} className="bg-[var(--primary)] text-white aspect-square h-full rounded-xl flex items-center justify-center shadow-md ios-active-scale shrink-0"><Plus size={24} /></button>
-              </div>
-            </div>
-
-            <div className="flex-1 overflow-y-auto no-scrollbar space-y-2 pb-10">
-              {ingredients.length > 0 ? ingredients.map((ing) => (
-                <div key={ing.id} className="bg-[var(--card)] p-4 rounded-2xl flex justify-between items-center border border-[var(--border)]/5 group shadow-sm mx-1">
-                  <div className="flex flex-col"><span className="font-bold">{ing.name}</span><span className="text-[10px] text-[var(--muted-foreground)] font-bold uppercase tracking-tight">{ing.calories_per_100g} kcal / 100{ing.unit_type || 'g'}</span></div>
-                  <button onClick={() => deleteIngredient(ing.id)} className="text-red-500/30 active:text-red-500 p-2 transition-colors"><X size={18} /></button>
-                </div>
-              )) : (
-                <div className="py-20 text-center opacity-30"><Apple size={48} className="mx-auto mb-2" /><p className="text-sm font-bold uppercase">Keine Einträge</p></div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

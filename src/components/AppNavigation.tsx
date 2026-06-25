@@ -36,8 +36,8 @@ export function AppNavigation() {
       {showFab && (
         <button
           onClick={() => router.push("/add-recipe")}
-          className="absolute bottom-[88px] right-5 w-14 h-14 rounded-2xl bg-primary text-primary-foreground shadow-lg flex items-center justify-center hover:scale-105 active:scale-95 transition-transform z-10"
-          style={{ boxShadow: '0 8px 24px rgba(0,230,118,0.35)' }}
+          className="absolute bottom-[88px] right-5 w-14 h-14 rounded-2xl bg-foreground text-background shadow-lg flex items-center justify-center hover:scale-105 active:scale-95 transition-transform z-10"
+          style={{ boxShadow: '0 8px 24px rgba(0,0,0,0.2)' }}
           aria-label="Neues Rezept"
         >
           <Plus className="h-6 w-6 stroke-[2.5]" />
@@ -54,17 +54,14 @@ export function AppNavigation() {
               <Link
                 href={item.path}
                 key={item.path}
-                className={`flex flex-col items-center gap-1 px-4 py-1.5 rounded-xl transition-all duration-150 ${
+                className={`flex flex-col items-center gap-1 px-4 py-1.5 transition-all duration-150 ${
                   isActive
-                    ? "text-primary"
+                    ? "text-foreground"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
                 <div className="relative flex items-center justify-center w-7 h-7">
-                  <Icon className={`h-[22px] w-[22px] transition-all ${isActive ? 'stroke-[2.2]' : 'stroke-[1.6]'}`} />
-                  {isActive && (
-                    <span className="absolute inset-0 rounded-lg bg-primary/10" />
-                  )}
+                  <Icon className={`h-[22px] w-[22px] transition-all ${isActive ? 'stroke-[2.5]' : 'stroke-[1.6]'}`} />
                 </div>
                 <span className={`text-[10px] font-medium tracking-wide transition-all ${isActive ? 'opacity-100' : 'opacity-60'}`}>
                   {item.label}

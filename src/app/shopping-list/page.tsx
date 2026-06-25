@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Check, ShoppingBag, Plus, Loader2 } from "lucide-react";
+import { Check, ShoppingBag, Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
 export default function ShoppingListPage() {
@@ -58,41 +58,53 @@ export default function ShoppingListPage() {
     }
   };
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <Loader2 className="animate-spin text-foreground" />
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-6 fade-in h-full flex flex-col overflow-hidden">
-      <header className="pt-4 flex justify-between items-end shrink-0">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight px-1">Einkauf</h1>
-          <p className="text-[var(--muted-foreground)] text-sm font-bold px-1 uppercase tracking-widest">
-            {items.filter(i => !i.is_checked).length} Artikel offen
-          </p>
-        </div>
-        <ShoppingBag className="text-[var(--primary)] opacity-20 mb-1" size={32} />
+    <div className="min-h-full pb-10" style={{ fontFamily: 'var(--font-sans, system-ui)' }}>
+      {/* Sticky Top Header with SafeArea */}
+      <header 
+        className="sticky top-0 z-20 flex items-end justify-between px-5 pb-3 bg-background/90 backdrop-blur-xl border-b border-border w-full"
+        style={{ paddingTop: 'max(env(safe-area-inset-top), 16px)' }}
+      >
+        <span
+          className="text-xl font-bold tracking-tight text-foreground"
+          style={{ fontFamily: 'var(--font-display, system-ui)' }}
+        >
+          Einkaufsliste
+        </span>
+        <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">
+          {items.filter(i => !i.is_checked).length} Offen
+        </span>
       </header>
 
-      <div className="flex-1 overflow-y-auto no-scrollbar pb-32 space-y-4 px-1">
-        {loading ? (
-          <div className="py-20 text-center"><Loader2 className="animate-spin mx-auto text-[var(--primary)]" /></div>
-        ) : items.length > 0 ? (
-          <div className="bg-[var(--card)] rounded-[28px] border border-[var(--border)]/5 shadow-sm overflow-hidden divide-y divide-[var(--border)]/5">
+      <div className="px-5 pt-6 space-y-4">
+        {items.length > 0 ? (
+          <div className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden divide-y divide-border">
             {items.map((item) => (
               <div 
                 key={item.id} 
-                className={`flex items-center gap-4 p-5 transition-all duration-500 ${item.is_checked ? "opacity-30" : "opacity-100"}`}
+                className={`flex items-center gap-4 p-4 transition-all duration-500 ${item.is_checked ? "opacity-40" : "opacity-100"}`}
               >
                 <button 
                   onClick={() => toggleItem(item.id, item.is_checked)}
                   className={`w-7 h-7 rounded-full border-2 flex items-center justify-center transition-all shrink-0 ${
-                    item.is_checked ? "bg-green-500 border-green-500 text-white" : "border-[var(--border)]"
+                    item.is_checked ? "bg-foreground border-foreground text-background" : "border-muted-foreground/30"
                   }`}
                 >
                   {item.is_checked && <Check size={16} strokeWidth={3} />}
                 </button>
                 <div className="flex-1 min-w-0">
-                  <p className={`font-bold text-[17px] truncate ${item.is_checked ? "line-through" : ""}`}>
+                  <p className={`font-bold text-[15px] text-foreground truncate ${item.is_checked ? "line-through" : ""}`}>
                     {item.ingredient_name || item.ingredients?.name || "Unbekannte Zutat"}
                   </p>
-                  <p className="text-[11px] font-bold text-[var(--muted-foreground)] uppercase tracking-widest mt-0.5">
+                  <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest mt-0.5">
                     {item.original_amount ? Math.round(item.original_amount * 10) / 10 : item.amount_in_grams} {item.unit || item.ingredients?.unit_type || 'g'}
                   </p>
                 </div>
@@ -100,9 +112,9 @@ export default function ShoppingListPage() {
             ))}
           </div>
         ) : (
-          <div className="py-20 text-center opacity-30 grayscale">
-            <ShoppingBag size={48} className="mx-auto mb-4" />
-            <p className="font-bold text-sm uppercase tracking-widest px-4">Deine Einkaufsliste ist leer</p>
+          <div className="py-20 text-center flex flex-col items-center">
+            <ShoppingBag size={48} className="text-muted-foreground opacity-30 mb-4" />
+            <p className="font-bold text-sm uppercase tracking-widest text-muted-foreground">Liste ist leer</p>
           </div>
         )}
       </div>
