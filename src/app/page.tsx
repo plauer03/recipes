@@ -247,10 +247,10 @@ export default function Dashboard() {
               {suggestedRecipe && (
                 <div className="animate-in fade-in slide-in-from-bottom-4">
                   {suggestedRecipe.notFound ? (<div className="bg-[var(--card)] p-6 rounded-3xl text-center border border-[var(--border)]/10 opacity-40"><p className="font-bold">Kein Treffer</p></div>) : (
-                    <div className="bg-[var(--card)] p-5 rounded-3xl border border-[var(--border)]/10 shadow-lg ios-active-scale cursor-pointer" onClick={() => {setIsInspirationOpen(false); setSelectedRecipe(suggestedRecipe);}}>
+                    <div className="bg-[var(--card)] p-5 rounded-3xl border border-[var(--border)]/10 shadow-lg ios-active-scale cursor-pointer" onClick={() => {setIsInspirationOpen(false); setSelectedRecipe(suggestedRecipe as Recipe);}}>
                       <div className="w-12 h-12 bg-[var(--primary)]/10 rounded-xl flex items-center justify-center text-[var(--primary)] mb-4"><ChefHat size={24} /></div>
-                      <h3 className="font-bold text-xl mb-1">{suggestedRecipe.title}</h3>
-                      <p className="text-[10px] text-[var(--primary)] font-bold uppercase tracking-tight">{suggestedRecipe.tags?.join(' • ')}</p>
+                      <h3 className="font-bold text-xl mb-1">{(suggestedRecipe as Recipe).title}</h3>
+                      <p className="text-[10px] text-[var(--primary)] font-bold uppercase tracking-tight">{(suggestedRecipe as Recipe).tags?.join(' • ')}</p>
                     </div>
                   )}
                 </div>
