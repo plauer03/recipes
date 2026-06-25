@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Sparkles, ChefHat, Flame, ShoppingBag, ChevronRight, Heart, X, Dices, Loader2, Clock } from "lucide-react";
+import { Sparkles, ChefHat, Flame, ShoppingBag, ChevronRight, Heart, Dices, Loader2, Clock } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import RecipeDetailModal from "@/components/RecipeDetailModal";
 
@@ -11,21 +11,37 @@ const AVAILABLE_TAGS = [
   "Italienisch", "Asiatisch", "Mediterran", "Deutsch"
 ];
 
+export interface Recipe {
+  id: string;
+  title: string;
+  tags?: string[];
+  is_favorite?: boolean;
+  created_by: string;
+  created_at?: string;
+  base_portions?: number;
+  instructions?: string;
+  profiles?: {
+    name?: string;
+    avatar_url?: string;
+  };
+  [key: string]: any;
+}
+
 export default function Dashboard() {
   const [user, setUser] = useState<any>(null);
-  const [favorites, setFavorites] = useState<any[]>([]);
-  const [recipes, setRecipes] = useState<any[]>([]);
-  const [feed, setFeed] = useState<any[]>([]);
+  const [favorites, setFavorites] = useState<Recipe[]>([]);
+  const [recipes, setRecipes] = useState<Recipe[]>([]);
+  const [feed, setFeed] = useState<Recipe[]>([]);
   const [loading, setLoading] = useState(true);
   
   // Inspiration Modal State
   const [isInspirationOpen, setIsInspirationOpen] = useState(false);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [suggestedRecipe, setSuggestedRecipe] = useState<any>(null);
+  const [suggestedRecipe, setSuggestedRecipe] = useState<Recipe | { notFound: true } | null>(null);
   const [isSpinning, setIsSpinning] = useState(false);
   
-  const [selectedRecipe, setSelectedRecipe] = useState<any>(null);
-  const [dailyRecommendation, setDailyRecommendation] = useState<any>(null);
+  const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
+  const [dailyRecommendation, setDailyRecommendation] = useState<{ recipe: Recipe; type: string } | null>(null);
   
   const supabase = createClient();
 
@@ -221,7 +237,6 @@ export default function Dashboard() {
             <div className="w-10 h-1.5 bg-[var(--muted)] rounded-full mx-auto shrink-0" />
             <div className="flex justify-between items-start shrink-0">
               <div className="flex-1"><h2 className="text-2xl font-bold tracking-tight">Inspiration</h2><p className="text-xs font-bold text-[var(--muted-foreground)] uppercase tracking-widest mt-1">Worauf hast du Lust?</p></div>
-              <button onClick={() => setIsInspirationOpen(false)} className="w-8 h-8 rounded-full bg-[var(--muted)]/50 flex items-center justify-center text-[var(--muted-foreground)]"><X size={18} /></button>
             </div>
             <div className="flex flex-wrap gap-2 shrink-0">
               {AVAILABLE_TAGS.map(tag => (

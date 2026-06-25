@@ -2,9 +2,9 @@
 
 import { useState, useEffect } from "react";
 import { 
-  X, Check, ShoppingBag, 
+  Check, ShoppingBag, 
   Trash2, ChefHat, Scale,
-  Edit3, Flame, Heart, Play
+  Edit3, Flame, Heart, Play, CheckCircle
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
@@ -30,6 +30,7 @@ export default function RecipeDetailModal({
   const [portions, setPortions] = useState(recipe.base_portions || 1);
   const [recipeIngredients, setRecipeIngredients] = useState<any[]>([]);
   const [isCooking, setIsCooking] = useState(false);
+  const [addedToCart, setAddedToCart] = useState(false);
   const supabase = createClient();
 
   useEffect(() => {
@@ -81,8 +82,10 @@ export default function RecipeDetailModal({
       });
       
       const { error } = await supabase.from('shopping_list').insert(items);
-      if (!error) alert("Einkaufsliste aktualisiert!");
-      else alert("Fehler beim Hinzufügen.");
+      if (!error) {
+        setAddedToCart(true);
+        setTimeout(() => setAddedToCart(false), 2000);
+      }
     }
   }
 
@@ -137,8 +140,9 @@ export default function RecipeDetailModal({
           </div>
 
           <div className="flex gap-2">
-            <button onClick={addToShoppingList} className="flex-1 bg-[var(--foreground)] text-[var(--background)] py-4 rounded-[24px] font-bold flex items-center justify-center gap-3 shadow-lg ios-active-scale">
-              <ShoppingBag size={20} /> Einkauf
+            <button onClick={addToShoppingList} disabled={addedToCart} className={`flex-1 ${addedToCart ? 'bg-green-500 text-white' : 'bg-[var(--foreground)] text-[var(--background)]'} py-4 rounded-[24px] font-bold flex items-center justify-center gap-3 shadow-lg ios-active-scale transition-colors duration-300`}>
+              {addedToCart ? <CheckCircle size={20} /> : <ShoppingBag size={20} />}
+              {addedToCart ? 'Hinzugefügt' : 'Einkauf'}
             </button>
             <button onClick={() => setIsCooking(true)} className="flex-1 bg-[var(--primary)] text-white py-4 rounded-[24px] font-bold flex items-center justify-center gap-3 shadow-lg ios-active-scale">
               <Play size={20} fill="white" /> Kochen
