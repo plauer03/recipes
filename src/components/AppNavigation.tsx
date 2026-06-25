@@ -1,0 +1,98 @@
+"use client";
+
+import { usePathname, useRouter } from "next/navigation";
+import { Home, BookOpen, ShoppingCart, Users, User, Plus, Moon, Sun } from "lucide-react";
+import { useTheme } from "next-themes";
+import Link from "next/link";
+import { useEffect, useState } from "react";
+
+export function AppNavigation() {
+  const pathname = usePathname();
+  const router = useRouter();
+  const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const navItems = [
+    { icon: Home, label: "Home", path: "/" },
+    { icon: BookOpen, label: "Rezepte", path: "/recipes" },
+    { icon: ShoppingCart, label: "Einkauf", path: "/shopping-list" },
+    { icon: Users, label: "Social", path: "/social" },
+    { icon: User, label: "Profil", path: "/profile" },
+  ];
+
+  const showFab = pathname === "/recipes" || pathname === "/";
+  // We don't show navigation on auth pages
+  const isAuthPage = pathname === "/login" || pathname === "/register";
+
+  if (isAuthPage) return null;
+
+  return (
+    <>
+      {/* Header */}
+      <header className="flex items-center justify-between px-5 pt-12 pb-3 bg-background/80 backdrop-blur-xl z-20 absolute top-0 w-full border-b border-border">
+        <span
+          className="text-xl font-bold tracking-tight text-foreground"
+          style={{ fontFamily: 'var(--font-display, system-ui)' }}
+        >
+          RecipeHub
+        </span>
+        <button
+          onClick={() => setTheme(theme === "light" ? "dark" : "light")}
+          className="w-9 h-9 rounded-full flex items-center justify-center bg-secondary text-muted-foreground hover:text-foreground transition-colors"
+          aria-label="Theme wechseln"
+        >
+          {mounted && (
+            theme === "light" ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />
+          )}
+        </button>
+      </header>
+
+      {/* FAB */}
+      {showFab && (
+        <button
+          onClick={() => router.push("/add-recipe")}
+          className="absolute bottom-[88px] right-5 w-14 h-14 rounded-2xl bg-primary text-primary-foreground shadow-lg flex items-center justify-center hover:scale-105 active:scale-95 transition-transform z-10"
+          style={{ boxShadow: '0 8px 24px rgba(0,230,118,0.35)' }}
+          aria-label="Neues Rezept"
+        >
+          <Plus className="h-6 w-6 stroke-[2.5]" />
+        </button>
+      )}
+
+      {/* Bottom Navigation */}
+      <nav className="absolute bottom-0 w-full border-t border-border bg-card/80 backdrop-blur-xl z-20">
+        <div className="flex items-center justify-around px-1 pt-2 pb-8">
+          {navItems.map((item) => {
+            const isActive = pathname === item.path;
+            const Icon = item.icon;
+            return (
+              <Link
+                href={item.path}
+                key={item.path}
+                className={`flex flex-col items-center gap-1 px-4 py-1.5 rounded-xl transition-all duration-150 ${
+                  isActive
+                    ? "text-primary"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <div className="relative flex items-center justify-center w-7 h-7">
+                  <Icon className={`h-[22px] w-[22px] transition-all ${isActive ? 'stroke-[2.2]' : 'stroke-[1.6]'}`} />
+                  {isActive && (
+                    <span className="absolute inset-0 rounded-lg bg-primary/10" />
+                  )}
+                </div>
+                <span className={`text-[10px] font-medium tracking-wide transition-all ${isActive ? 'opacity-100' : 'opacity-60'}`}>
+                  {item.label}
+                </span>
+              </Link>
+            );
+          })}
+        </div>
+      </nav>
+    </>
+  );
+}

@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import BottomNav from "@/components/BottomNav";
+import { AppNavigation } from "@/components/AppNavigation";
 import { Providers } from "@/components/Providers";
 
 const geistSans = Geist({
@@ -26,7 +26,7 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#F2F2F7" },
+    { media: "(prefers-color-scheme: light)", color: "#FFFFFF" },
     { media: "(prefers-color-scheme: dark)", color: "#000000" },
   ],
   width: "device-width",
@@ -44,16 +44,16 @@ export default function RootLayout({
   return (
     <html lang="de" suppressHydrationWarning className="h-[100dvh] overflow-hidden">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased flex justify-center h-[100dvh] bg-[var(--background)] transition-colors duration-300`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased flex justify-center h-[100dvh] bg-[var(--background)] text-[var(--foreground)] transition-colors duration-300 font-sans`}
       >
         <Providers>
           <div className="w-full max-w-[450px] h-[100dvh] bg-[var(--background)] flex flex-col relative overflow-hidden shadow-2xl transition-colors duration-300">
-            <main className="flex-1 relative overflow-hidden">
-              <div className="absolute inset-0 overflow-y-auto no-scrollbar p-4 pb-32 pt-[env(safe-area-inset-top)]">
-                {children}
-              </div>
+            
+            <main className="flex-1 w-full relative overflow-y-auto no-scrollbar pt-20 pb-28">
+              {children}
             </main>
-            <BottomNav />
+            
+            <AppNavigation />
           </div>
         </Providers>
       </body>

@@ -1,25 +1,23 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Sparkles, ChefHat, Flame, ShoppingBag, ChevronRight, Heart, Dices, Loader2, Clock } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { Clock, Heart, BookOpen, TrendingUp, ArrowRight, ChefHat, Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import RecipeDetailModal from "@/components/RecipeDetailModal";
-
-const AVAILABLE_TAGS = [
-  "Frühstück", "Hauptspeise", "Beilage", "Snack", "Dessert", 
-  "Schnell", "Meal Prep", "Vegan", "Vegetarisch", "High Protein", "Low Carb",
-  "Italienisch", "Asiatisch", "Mediterran", "Deutsch"
-];
 
 export interface Recipe {
   id: string;
   title: string;
-  tags?: string[];
+  description?: string;
+  image?: string;
+  prepTime?: number;
+  cookTime?: number;
+  difficulty?: string;
   is_favorite?: boolean;
+  likes?: number;
   created_by: string;
   created_at?: string;
-  base_portions?: number;
-  instructions?: string;
+  ingredients_data?: any;
   profiles?: {
     name?: string;
     avatar_url?: string;
@@ -27,23 +25,11 @@ export interface Recipe {
   [key: string]: any;
 }
 
-export default function Dashboard() {
-  const [user, setUser] = useState<any>(null);
-  const [favorites, setFavorites] = useState<Recipe[]>([]);
-  const [recipes, setRecipes] = useState<Recipe[]>([]);
-  const [feed, setFeed] = useState<Recipe[]>([]);
-  const [loading, setLoading] = useState(true);
-  
-  // Inspiration Modal State
-  const [isInspirationOpen, setIsInspirationOpen] = useState(false);
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [suggestedRecipe, setSuggestedRecipe] = useState<Recipe | { notFound: true } | null>(null);
-  const [isSpinning, setIsSpinning] = useState(false);
-  
-  const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
-  const [dailyRecommendation, setDailyRecommendation] = useState<{ recipe: Recipe; type: string } | null>(null);
-  
+export default function Home() {
+  const router = useRouter();
   const supabase = createClient();
+  const [recipes, setRecipes] = useState<Recipe[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchData();
@@ -51,223 +37,162 @@ export default function Dashboard() {
 
   async function fetchData() {
     setLoading(true);
-    const { data: { user: authUser } } = await supabase.auth.getUser();
-    setUser(authUser);
-
-    if (authUser) {
-      // 1. Fetch own recipes
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (user) {
+      // Fetch user's recipes
       const { data: recs } = await supabase
         .from('recipes')
         .select('*')
-        .eq('created_by', authUser.id)
+        .eq('created_by', user.id)
         .order('created_at', { ascending: false });
       
       if (recs) {
-        setRecipes(recs);
-        setFavorites(recs.filter(r => r.is_favorite));
-        generateDailyRecommendation(recs);
-      }
-
-      // 2. Fetch following list
-      const { data: following } = await supabase
-        .from('follows')
-        .select('following_id')
-        .eq('follower_id', authUser.id);
-      
-      const idsToShow = [authUser.id];
-      if (following && following.length > 0) {
-        idsToShow.push(...following.map(f => f.following_id));
-      }
-
-      // 3. Fetch Feed with Profile Join
-      const { data: feedRecs, error: feedErr } = await supabase
-        .from('recipes')
-        .select('*, profiles:created_by(name, avatar_url)')
-        .in('created_by', idsToShow)
-        .order('created_at', { ascending: false })
-        .limit(15);
-      
-      if (feedRecs) {
-        setFeed(feedRecs);
-      } else if (feedErr) {
-        console.error("Feed error:", feedErr);
+        // Map data to match UI expectations
+        const mappedRecs = recs.map(r => ({
+          ...r,
+          image: "https://images.unsplash.com/photo-1495521821757-a1efb6729352?w=800", // Placeholder until we have real images
+          prepTime: r.base_portions || 15,
+          cookTime: 20,
+          difficulty: "easy",
+          likes: r.is_favorite ? 10 : 2,
+          description: r.instructions?.substring(0, 50) + "..." || "Leckeres Rezept"
+        }));
+        setRecipes(mappedRecs);
       }
     }
     setLoading(false);
   }
 
-  const generateDailyRecommendation = (allRecipes: any[]) => {
-    const hour = new Date().getHours();
-    let type = "Hauptspeise";
-    if (hour >= 5 && hour < 11) type = "Frühstück";
-    else if (hour >= 11 && hour < 15) type = "Hauptspeise";
-    else if (hour >= 15 && hour < 18) type = "Snack";
-    else type = "Hauptspeise";
+  const featuredRecipes = recipes.slice(0, 3);
+  const popularRecipes = [...recipes].sort((a, b) => (b.likes || 0) - (a.likes || 0)).slice(0, 4);
+  const totalLikes = recipes.reduce((sum, r) => sum + (r.likes || 0), 0);
+  const favCount = recipes.filter(r => r.is_favorite).length;
 
-    const possible = allRecipes.filter(r => r.tags?.includes(type));
-    if (possible.length > 0) {
-      setDailyRecommendation({ recipe: possible[Math.floor(Math.random() * possible.length)], type });
-    } else if (allRecipes.length > 0) {
-      setDailyRecommendation({ recipe: allRecipes[Math.floor(Math.random() * allRecipes.length)], type: "Empfehlung" });
-    }
-  };
-
-  const findInspiration = () => {
-    setIsSpinning(true);
-    setSuggestedRecipe(null);
-    setTimeout(() => {
-      let filtered = recipes;
-      if (selectedTags.length > 0) {
-        filtered = recipes.filter(r => r.tags && selectedTags.every(t => r.tags?.includes(t)));
-      }
-      if (filtered.length > 0) {
-        setSuggestedRecipe(filtered[Math.floor(Math.random() * filtered.length)]);
-      } else {
-        setSuggestedRecipe({ notFound: true });
-      }
-      setIsSpinning(false);
-    }, 800);
-  };
-
-  async function toggleFavorite(recipe: any) {
-    const newStatus = !recipe.is_favorite;
-    setRecipes(prev => prev.map(r => r.id === recipe.id ? { ...r, is_favorite: newStatus } : r));
-    setFavorites(prev => {
-      if (newStatus) {
-        const fullRecipe = recipes.find(r => r.id === recipe.id);
-        return fullRecipe ? [{ ...fullRecipe, is_favorite: true }, ...prev] : prev;
-      }
-      return prev.filter(r => r.id !== recipe.id);
-    });
-    await supabase.from('recipes').update({ is_favorite: newStatus }).eq('id', recipe.id);
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <Loader2 className="animate-spin text-primary" />
+      </div>
+    );
   }
 
   return (
-    <div className="space-y-6 fade-in h-full flex flex-col overflow-hidden">
-      <header className="pt-4 shrink-0 px-1">
-        <h1 className="text-4xl font-extrabold tracking-tight">Guten Appetit!</h1>
-      </header>
+    <div className="min-h-full pb-10" style={{ fontFamily: 'var(--font-sans, system-ui)' }}>
+      {/* Greeting */}
+      <div className="px-5 pt-4 pb-6">
+        <p className="text-sm font-semibold text-primary mb-1">Guten Appetit 👋</p>
+        <h2
+          className="text-3xl font-extrabold text-foreground leading-tight mb-4"
+          style={{ fontFamily: 'var(--font-display, system-ui)' }}
+        >
+          Was kochst du<br />heute?
+        </h2>
+        <button
+          onClick={() => router.push('/add-recipe')}
+          className="inline-flex items-center gap-2 bg-primary text-primary-foreground px-5 py-2.5 rounded-full text-sm font-semibold active:scale-95 transition-all"
+          style={{ boxShadow: '0 4px 16px rgba(0, 208, 132, 0.30)' }}
+        >
+          Neues Rezept
+          <ArrowRight className="h-4 w-4" />
+        </button>
+      </div>
 
-      {/* Daily Recommendation */}
-      <section className="space-y-3 px-1 shrink-0">
-        <div className="flex items-center gap-2 text-[10px] font-bold text-[var(--muted-foreground)] uppercase tracking-widest px-1">
-          <Clock size={12} /> {dailyRecommendation?.type || "Empfehlung"}
-        </div>
-        {dailyRecommendation ? (
-          <div onClick={() => setSelectedRecipe(dailyRecommendation.recipe)} className="bg-[var(--card)] p-4 rounded-[28px] border border-[var(--border)]/5 shadow-sm flex items-center gap-4 ios-active-scale cursor-pointer">
-            <div className="w-16 h-16 bg-[var(--primary)]/10 rounded-2xl flex items-center justify-center text-[var(--primary)] shrink-0"><ChefHat size={32} /></div>
-            <div className="flex-1 min-w-0">
-              <h3 className="font-bold text-lg truncate">{dailyRecommendation.recipe.title}</h3>
-              <p className="text-xs text-[var(--muted-foreground)] font-medium uppercase tracking-tight opacity-70 truncate">{dailyRecommendation.recipe.tags?.join(' • ')}</p>
+      {/* Stats */}
+      <div className="px-5 mb-7">
+        <div className="grid grid-cols-3 gap-3">
+          {[
+            { icon: BookOpen, value: recipes.length, label: 'Rezepte', iconClass: 'text-primary', bgClass: 'bg-accent' },
+            { icon: Heart, value: favCount, label: 'Favoriten', iconClass: 'text-rose-500', bgClass: 'bg-rose-50 dark:bg-rose-950/30' },
+            { icon: TrendingUp, value: totalLikes, label: 'Likes', iconClass: 'text-violet-500', bgClass: 'bg-violet-50 dark:bg-violet-950/30' },
+          ].map(({ icon: Icon, value, label, iconClass, bgClass }) => (
+            <div key={label} className="bg-card rounded-2xl p-4 border border-border shadow-sm shadow-black/5">
+              <div className={`w-8 h-8 rounded-xl ${bgClass} ${iconClass} flex items-center justify-center mb-2`}>
+                <Icon className="h-4 w-4" />
+              </div>
+              <div className="text-2xl font-bold text-foreground leading-none mb-0.5">{value}</div>
+              <div className="text-xs text-muted-foreground font-medium">{label}</div>
             </div>
-            <ChevronRight size={20} className="text-[var(--muted-foreground)] opacity-20" />
-          </div>
-        ) : (
-          <div className="bg-[var(--card)] p-6 rounded-[28px] text-center border border-dashed border-[var(--border)] opacity-30"><p className="text-xs font-bold uppercase tracking-widest">Lege Rezepte an</p></div>
-        )}
-      </section>
-
-      {/* Compact Inspiration Trigger */}
-      <section onClick={() => setIsInspirationOpen(true)} className="bg-[var(--primary)] text-white p-4 rounded-2xl shadow-lg ios-active-scale cursor-pointer shrink-0 mx-1 flex items-center gap-4">
-        <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center shrink-0"><Sparkles size={20} className="fill-white" /></div>
-        <div className="flex-1"><h2 className="text-[16px] font-bold">Inspiration finden</h2><p className="text-white/70 text-[11px] font-medium leading-none">Lass den Zufall entscheiden</p></div>
-        <ChevronRight size={20} className="opacity-40" />
-      </section>
-
-      {/* Simple Stats */}
-      <div className="flex gap-4 shrink-0 px-1">
-        <div className="flex-1 bg-[var(--card)] p-4 rounded-2xl flex items-center gap-3 border border-[var(--border)]/5 shadow-sm">
-          <div className="w-10 h-10 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center text-orange-600">
-            <Flame size={20} />
-          </div>
-          <p className="text-xl font-black">{recipes.length}</p>
-        </div>
-        <div className="flex-1 bg-[var(--card)] p-4 rounded-2xl flex items-center gap-3 border border-[var(--border)]/5 shadow-sm">
-          <div className="w-10 h-10 rounded-full bg-pink-100 dark:bg-pink-900/30 flex items-center justify-center text-pink-600">
-            <Heart size={20} className="fill-pink-600" />
-          </div>
-          <p className="text-xl font-black">{favorites.length}</p>
+          ))}
         </div>
       </div>
 
-      {/* Feed Section */}
-      <section className="space-y-3 flex-1 overflow-hidden flex flex-col min-h-0 pb-4 px-1">
-        <h2 className="text-xl font-bold tracking-tight px-1 shrink-0">Aktivität</h2>
-        <div className="bg-[var(--card)] rounded-[24px] border border-[var(--border)]/10 shadow-sm overflow-y-auto no-scrollbar flex-1 p-2">
-          {loading ? (
-            <div className="p-8 text-center"><Loader2 className="animate-spin mx-auto text-[var(--primary)]" /></div>
-          ) : feed.length > 0 ? (
-            <div className="space-y-1">
-              {feed.map(item => (
-                <div key={item.id} onClick={() => setSelectedRecipe(item)} className="p-3 rounded-2xl flex items-center gap-4 ios-active-scale cursor-pointer hover:bg-[var(--muted)]/20 transition-colors">
-                  <div className="w-12 h-12 bg-[var(--primary)]/5 dark:bg-white/5 rounded-xl flex items-center justify-center overflow-hidden shrink-0 border border-[var(--border)]/5">
-                    {item.profiles?.avatar_url ? (
-                      <img src={item.profiles.avatar_url} className="w-full h-full object-cover" />
-                    ) : (
-                      <ChefHat size={20} className="text-[var(--primary)] opacity-40" />
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-bold text-[16px] truncate flex items-center gap-2">
-                       {item.title}
-                       {item.created_by === user?.id && <div className="w-1.5 h-1.5 rounded-full bg-[var(--primary)]" />}
-                    </h3>
-                    <p className="text-[10px] text-[var(--muted-foreground)] font-bold uppercase tracking-tight">
-                       {item.created_by === user?.id ? "Von dir" : `von ${item.profiles?.name || "Freund"}`}
-                    </p>
-                  </div>
-                  <ChevronRight size={16} className="text-[var(--muted-foreground)] opacity-20" />
+      {/* Featured */}
+      {featuredRecipes.length > 0 && (
+        <div className="mb-7">
+          <div className="flex items-center justify-between px-5 mb-3">
+            <h3 className="text-lg font-bold text-foreground" style={{ fontFamily: 'var(--font-display, system-ui)' }}>
+              Zuletzt hinzugefügt
+            </h3>
+            <button
+              onClick={() => router.push('/recipes')}
+              className="text-sm font-semibold text-primary flex items-center gap-1"
+            >
+              Alle <ArrowRight className="h-3.5 w-3.5" />
+            </button>
+          </div>
+          <div className="flex flex-col gap-3 px-5">
+            {featuredRecipes.map((recipe) => (
+              <button
+                key={recipe.id}
+                onClick={() => router.push(`/recipes/${recipe.id}`)}
+                className="w-full flex gap-3 bg-card rounded-2xl overflow-hidden border border-border shadow-sm shadow-black/5 hover:shadow-md active:scale-[0.98] transition-all text-left"
+              >
+                <div className="w-24 h-24 shrink-0 bg-muted">
+                  <img src={recipe.image} alt={recipe.title} className="w-full h-full object-cover" />
                 </div>
-              ))}
-            </div>
-          ) : (
-            <div className="p-10 text-center text-[var(--muted-foreground)] space-y-2 grayscale opacity-40">
-              <ChefHat size={40} className="mx-auto" />
-              <p className="text-xs font-bold uppercase tracking-widest">Noch keine Aktivität</p>
-            </div>
-          )}
-        </div>
-      </section>
-
-      {/* Inspiration Modal */}
-      {isInspirationOpen && (
-        <div className="fixed inset-0 z-[100] flex items-end justify-center px-0">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setIsInspirationOpen(false)} />
-          <div className="relative w-full max-w-[450px] bg-[var(--background)] rounded-t-[32px] p-6 h-[90dvh] flex flex-col gap-6 fade-in shadow-2xl overflow-hidden">
-            <div className="w-10 h-1.5 bg-[var(--muted)] rounded-full mx-auto shrink-0" />
-            <div className="flex justify-between items-start shrink-0">
-              <div className="flex-1"><h2 className="text-2xl font-bold tracking-tight">Inspiration</h2><p className="text-xs font-bold text-[var(--muted-foreground)] uppercase tracking-widest mt-1">Worauf hast du Lust?</p></div>
-            </div>
-            <div className="flex flex-wrap gap-2 shrink-0">
-              {AVAILABLE_TAGS.map(tag => (
-                <button key={tag} onClick={() => {if(selectedTags.includes(tag)) setSelectedTags(selectedTags.filter(t=>t!==tag)); else setSelectedTags([...selectedTags, tag])}} className={`px-3 py-1.5 rounded-full text-[13px] font-bold transition-colors border ${selectedTags.includes(tag) ? "bg-[var(--primary)] text-white border-[var(--primary)] shadow-md" : "bg-[var(--card)] text-[var(--muted-foreground)] border-[var(--border)]/10"}`}>{tag}</button>
-              ))}
-            </div>
-            <div className="flex-1 overflow-hidden">
-              {suggestedRecipe && (
-                <div className="animate-in fade-in slide-in-from-bottom-4">
-                  {suggestedRecipe.notFound ? (<div className="bg-[var(--card)] p-6 rounded-3xl text-center border border-[var(--border)]/10 opacity-40"><p className="font-bold">Kein Treffer</p></div>) : (
-                    <div className="bg-[var(--card)] p-5 rounded-3xl border border-[var(--border)]/10 shadow-lg ios-active-scale cursor-pointer" onClick={() => {setIsInspirationOpen(false); setSelectedRecipe(suggestedRecipe as Recipe);}}>
-                      <div className="w-12 h-12 bg-[var(--primary)]/10 rounded-xl flex items-center justify-center text-[var(--primary)] mb-4"><ChefHat size={24} /></div>
-                      <h3 className="font-bold text-xl mb-1">{(suggestedRecipe as Recipe).title}</h3>
-                      <p className="text-[10px] text-[var(--primary)] font-bold uppercase tracking-tight">{(suggestedRecipe as Recipe).tags?.join(' • ')}</p>
-                    </div>
-                  )}
+                <div className="flex-1 py-3 pr-3 min-w-0">
+                  <p className="font-semibold text-foreground text-sm mb-1 truncate">{recipe.title}</p>
+                  <p className="text-xs text-muted-foreground line-clamp-1 mb-2">{recipe.description}</p>
+                  <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                    <span className="flex items-center gap-1">
+                      <Clock className="h-3 w-3" />
+                      {(recipe.prepTime || 0) + (recipe.cookTime || 0)} Min
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <ChefHat className="h-3 w-3" />
+                      {recipe.difficulty === 'easy' ? 'Einfach' : recipe.difficulty === 'medium' ? 'Mittel' : 'Schwer'}
+                    </span>
+                  </div>
                 </div>
-              )}
-            </div>
-            <button onClick={findInspiration} disabled={isSpinning} className="w-full bg-[var(--primary)] text-white py-5 rounded-[24px] font-bold text-lg shadow-xl flex items-center justify-center gap-3 ios-active-scale disabled:opacity-50 shrink-0 mt-auto">{isSpinning ? <Loader2 className="animate-spin" /> : <><Dices size={24} /> Rezept würfeln</>}</button>
+              </button>
+            ))}
           </div>
         </div>
       )}
 
-      {selectedRecipe && (
-        <RecipeDetailModal 
-          recipe={selectedRecipe} 
-          currentUserId={user?.id}
-          onClose={() => setSelectedRecipe(null)}
-          onToggleFavorite={toggleFavorite}
-        />
+      {/* Popular Grid */}
+      {popularRecipes.length > 0 && (
+        <div className="px-5">
+          <h3 className="text-lg font-bold text-foreground mb-3" style={{ fontFamily: 'var(--font-display, system-ui)' }}>
+            Beliebt
+          </h3>
+          <div className="grid grid-cols-2 gap-3">
+            {popularRecipes.map((recipe) => (
+              <button
+                key={recipe.id}
+                onClick={() => router.push(`/recipes/${recipe.id}`)}
+                className="w-full bg-card rounded-2xl overflow-hidden border border-border shadow-sm shadow-black/5 hover:shadow-md active:scale-[0.98] transition-all text-left"
+              >
+                <div className="relative w-full h-32 bg-muted">
+                  <img src={recipe.image} alt={recipe.title} className="w-full h-full object-cover" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent" />
+                  <div className="absolute bottom-2 right-2 flex items-center gap-1 bg-black/40 backdrop-blur-sm text-white text-xs px-2 py-0.5 rounded-full">
+                    <Heart className="h-2.5 w-2.5 fill-current" />
+                    {recipe.likes}
+                  </div>
+                </div>
+                <div className="p-3">
+                  <p className="font-semibold text-foreground text-sm leading-snug line-clamp-1 mb-1">{recipe.title}</p>
+                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <Clock className="h-3 w-3" />
+                    {(recipe.prepTime || 0) + (recipe.cookTime || 0)} Min
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
       )}
     </div>
   );
