@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { 
   User, LogOut, 
   ChevronRight, Moon, 
-  Loader2, Camera
+  Loader2, Camera, Heart, Coffee
 } from "lucide-react";
 
 export default function ProfilePage() {
@@ -212,12 +212,27 @@ export default function ProfilePage() {
         </div>
 
         <button 
+          onClick={() => window.open('https://paypal.me/lauerpa', '_blank')}
+          className="w-full bg-[#FFDD00] text-black rounded-2xl p-4 flex items-center gap-3 active:scale-[0.98] transition-transform font-bold justify-center shadow-sm hover:bg-[#FFDD00]/90"
+        >
+          <Coffee size={20} />
+          Buy me a coffee
+        </button>
+
+        <button 
           onClick={handleLogout}
           className="w-full bg-card rounded-2xl p-4 flex items-center gap-4 active:scale-[0.98] transition-transform border border-border text-destructive font-bold justify-center shadow-sm"
         >
           <LogOut size={18} />
           Abmelden
         </button>
+
+        {/* Footer */}
+        <div className="pt-2 pb-6 flex justify-center">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground opacity-60 flex items-center gap-1.5">
+            Made with <Heart size={10} className="fill-current text-destructive" /> by Pascal
+          </p>
+        </div>
       </div>
 
       {/* Edit Profile Modal */}

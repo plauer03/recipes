@@ -163,12 +163,11 @@ export default function Home() {
           </h3>
         </div>
         <div className="flex overflow-x-auto pb-4 gap-2 snap-x snap-mandatory no-scrollbar">
-          <div className="w-3 shrink-0" />
-          {INSPO_TAGS.map((tag) => (
+          {INSPO_TAGS.map((tag, index) => (
             <button
               key={tag}
               onClick={() => handleInspo(tag)}
-              className={`snap-start shrink-0 px-4 py-2 rounded-full text-sm font-bold transition-all shadow-sm ${
+              className={`snap-start shrink-0 px-4 py-2 rounded-full text-sm font-bold transition-all shadow-sm ${index === 0 ? 'ml-5' : ''} ${index === INSPO_TAGS.length - 1 ? 'mr-5' : ''} ${
                 activeTags.includes(tag) 
                   ? 'bg-foreground text-background scale-105' 
                   : 'bg-card text-foreground border border-border hover:bg-secondary'
@@ -177,7 +176,6 @@ export default function Home() {
               {tag}
             </button>
           ))}
-          <div className="w-3 shrink-0" />
         </div>
 
         {/* Inspo Result */}
