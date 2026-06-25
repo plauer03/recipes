@@ -1,0 +1,1 @@
+ALTER TABLE shopping_list ADD COLUMN IF NOT EXISTS original_amount FLOAT; ALTER TABLE shopping_list ADD COLUMN IF NOT EXISTS unit TEXT;
