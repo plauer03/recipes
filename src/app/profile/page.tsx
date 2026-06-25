@@ -213,7 +213,7 @@ export default function ProfilePage() {
 
         <button 
           onClick={() => window.open('https://paypal.me/lauerpa', '_blank')}
-          className="w-full bg-[#FFDD00] text-black rounded-2xl p-4 flex items-center gap-3 active:scale-[0.98] transition-transform font-bold justify-center shadow-sm hover:bg-[#FFDD00]/90"
+          className="hidden w-full bg-[#FFDD00] text-black rounded-2xl p-4 items-center gap-3 active:scale-[0.98] transition-transform font-bold justify-center shadow-sm hover:bg-[#FFDD00]/90"
         >
           <Coffee size={20} />
           Buy me a coffee
@@ -229,8 +229,8 @@ export default function ProfilePage() {
 
         {/* Footer */}
         <div className="pt-2 pb-6 flex justify-center">
-          <p className="text-[10px] font-bold tracking-widest text-muted-foreground opacity-60 lowercase">
-            made with ❤️
+          <p className="text-[10px] font-bold tracking-widest text-muted-foreground opacity-60">
+            MADE WITH &lt;3
           </p>
         </div>
       </div>

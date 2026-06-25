@@ -41,11 +41,30 @@ export default function Home() {
   const [inspoRecipe, setInspoRecipe] = useState<Recipe | null>(null);
 
   useEffect(() => {
+    try {
+      const cachedRecipes = localStorage.getItem('cache_recipes');
+      const cachedFeed = localStorage.getItem('cache_feed');
+      if (cachedRecipes) {
+        const parsed = JSON.parse(cachedRecipes);
+        setRecipes(parsed);
+        setFavorites(parsed.filter((r: any) => r.is_favorite));
+      }
+      if (cachedFeed) {
+        setFeed(JSON.parse(cachedFeed));
+      }
+      if (cachedRecipes || cachedFeed) {
+        setLoading(false);
+      }
+    } catch (e) {}
+    
     fetchData();
   }, []);
 
   async function fetchData() {
-    setLoading(true);
+    if (!localStorage.getItem('cache_recipes')) {
+      setLoading(true);
+    }
+    
     const { data: { user: authUser } } = await supabase.auth.getUser();
     setUser(authUser);
     
@@ -60,6 +79,7 @@ export default function Home() {
       if (recs) {
         setRecipes(recs);
         setFavorites(recs.filter(r => r.is_favorite));
+        localStorage.setItem('cache_recipes', JSON.stringify(recs));
       }
 
       // 2. Fetch following list
@@ -83,6 +103,7 @@ export default function Home() {
       
       if (feedRecs) {
         setFeed(feedRecs);
+        localStorage.setItem('cache_feed', JSON.stringify(feedRecs));
       }
     }
     setLoading(false);

@@ -36,11 +36,20 @@ export default function Recipes() {
   const [user, setUser] = useState<any>(null);
 
   useEffect(() => {
+    try {
+      const cachedSearch = localStorage.getItem('cache_search_recipes');
+      if (cachedSearch) {
+        setRecipes(JSON.parse(cachedSearch));
+        setLoading(false);
+      }
+    } catch (e) {}
     fetchData();
   }, []);
 
   async function fetchData() {
-    setLoading(true);
+    if (!localStorage.getItem('cache_search_recipes')) {
+      setLoading(true);
+    }
     const { data: { user } } = await supabase.auth.getUser();
     setUser(user);
     
@@ -64,6 +73,7 @@ export default function Recipes() {
       
       if (recs) {
         setRecipes(recs);
+        localStorage.setItem('cache_search_recipes', JSON.stringify(recs));
       }
     }
     setLoading(false);

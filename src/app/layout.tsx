@@ -43,9 +43,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="de" suppressHydrationWarning className="h-[100dvh] overflow-hidden">
+    <html lang="de" suppressHydrationWarning className="h-[100dvh] overflow-hidden overscroll-none">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased flex justify-center h-[100dvh] bg-[var(--background)] text-[var(--foreground)] transition-colors duration-300 font-sans`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased flex justify-center h-[100dvh] bg-[var(--background)] text-[var(--foreground)] transition-colors duration-300 font-sans overscroll-none`}
       >
         <Providers>
           <div className="w-full max-w-[450px] h-[100dvh] bg-[var(--background)] flex flex-col relative overflow-hidden shadow-2xl transition-colors duration-300">

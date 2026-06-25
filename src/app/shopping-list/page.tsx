@@ -11,11 +11,20 @@ export default function ShoppingListPage() {
   const supabase = createClient();
 
   useEffect(() => {
+    try {
+      const cachedList = localStorage.getItem('cache_shopping_list');
+      if (cachedList) {
+        setItems(JSON.parse(cachedList));
+        setLoading(false);
+      }
+    } catch (e) {}
     fetchItems();
   }, []);
 
   async function fetchItems() {
-    setLoading(true);
+    if (!localStorage.getItem('cache_shopping_list')) {
+      setLoading(true);
+    }
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
@@ -31,7 +40,10 @@ export default function ShoppingListPage() {
       .eq('user_id', user.id)
       .order('created_at', { ascending: false });
     
-    if (data) setItems(data);
+    if (data) {
+      setItems(data);
+      localStorage.setItem('cache_shopping_list', JSON.stringify(data));
+    }
     setLoading(false);
   }
 
