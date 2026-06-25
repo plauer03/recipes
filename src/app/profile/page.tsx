@@ -229,8 +229,8 @@ export default function ProfilePage() {
 
         {/* Footer */}
         <div className="pt-2 pb-6 flex justify-center">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground opacity-60">
-            Made with &lt;3
+          <p className="text-[10px] font-bold tracking-widest text-muted-foreground opacity-60 lowercase">
+            made with ❤️
           </p>
         </div>
       </div>
