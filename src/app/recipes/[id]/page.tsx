@@ -181,30 +181,41 @@ export default function RecipeDetail({ params }: { params: Promise<{ id: string 
               <span className="text-xs bg-primary-foreground/20 px-2 py-1 rounded text-primary-foreground">Gesamt</span>
             </h3>
             <div className="grid grid-cols-4 gap-2 text-center divide-x divide-primary-foreground/20">
-              <div>
-                <div className="text-[10px] uppercase tracking-wider opacity-80 font-bold mb-1">Kcal</div>
-                <div className="font-bold text-lg">
-                  {recipe.ingredients_data.reduce((acc: number, cur: any) => acc + (cur.calories || 0), 0) * servings}
-                </div>
-              </div>
-              <div>
-                <div className="text-[10px] uppercase tracking-wider opacity-80 font-bold mb-1">Protein</div>
-                <div className="font-bold text-lg">
-                  {recipe.ingredients_data.reduce((acc: number, cur: any) => acc + (cur.protein || 0), 0) * servings}g
-                </div>
-              </div>
-              <div>
-                <div className="text-[10px] uppercase tracking-wider opacity-80 font-bold mb-1">Carbs</div>
-                <div className="font-bold text-lg">
-                  {recipe.ingredients_data.reduce((acc: number, cur: any) => acc + (cur.carbs || 0), 0) * servings}g
-                </div>
-              </div>
-              <div>
-                <div className="text-[10px] uppercase tracking-wider opacity-80 font-bold mb-1">Fett</div>
-                <div className="font-bold text-lg">
-                  {recipe.ingredients_data.reduce((acc: number, cur: any) => acc + (cur.fat || 0), 0) * servings}g
-                </div>
-              </div>
+              {(() => {
+                const formatMacro = (val: number, isKcal: boolean = false) => {
+                  if (isKcal) return Math.round(val);
+                  if (val < 10) return Number(val.toFixed(1));
+                  return Math.round(val);
+                };
+                return (
+                  <>
+                    <div>
+                      <div className="text-[10px] uppercase tracking-wider opacity-80 font-bold mb-1">Kcal</div>
+                      <div className="font-bold text-lg">
+                        {formatMacro(recipe.ingredients_data.reduce((acc: number, cur: any) => acc + (cur.calories || 0), 0) * servings, true)}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-[10px] uppercase tracking-wider opacity-80 font-bold mb-1">Protein</div>
+                      <div className="font-bold text-lg">
+                        {formatMacro(recipe.ingredients_data.reduce((acc: number, cur: any) => acc + (cur.protein || 0), 0) * servings)}g
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-[10px] uppercase tracking-wider opacity-80 font-bold mb-1">Carbs</div>
+                      <div className="font-bold text-lg">
+                        {formatMacro(recipe.ingredients_data.reduce((acc: number, cur: any) => acc + (cur.carbs || 0), 0) * servings)}g
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-[10px] uppercase tracking-wider opacity-80 font-bold mb-1">Fett</div>
+                      <div className="font-bold text-lg">
+                        {formatMacro(recipe.ingredients_data.reduce((acc: number, cur: any) => acc + (cur.fat || 0), 0) * servings)}g
+                      </div>
+                    </div>
+                  </>
+                );
+              })()}
             </div>
           </div>
         )}
