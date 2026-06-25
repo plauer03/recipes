@@ -186,13 +186,27 @@ export default function ProfilePage() {
               <div className="w-8 h-8 rounded-lg bg-secondary text-foreground flex items-center justify-center shrink-0">
                 <Moon size={18} />
               </div>
-              <span className="flex-1 text-left font-semibold text-foreground">Dunkelmodus</span>
-              <button 
-                onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-                className={`w-11 h-6 rounded-full transition-all relative ${theme === 'dark' ? 'bg-foreground' : 'bg-secondary'}`}
-              >
-                <div className={`absolute top-1 w-4 h-4 rounded-full transition-all shadow-sm ${theme === 'dark' ? 'left-6 bg-background' : 'left-1 bg-foreground'}`} />
-              </button>
+              <span className="flex-1 text-left font-semibold text-foreground">Erscheinungsbild</span>
+              <div className="flex gap-1 bg-secondary p-1 rounded-xl">
+                <button 
+                  onClick={() => setTheme('light')}
+                  className={`px-3 py-1 text-xs font-bold rounded-lg transition-all ${theme === 'light' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                >
+                  Hell
+                </button>
+                <button 
+                  onClick={() => setTheme('dark')}
+                  className={`px-3 py-1 text-xs font-bold rounded-lg transition-all ${theme === 'dark' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                >
+                  Dunkel
+                </button>
+                <button 
+                  onClick={() => setTheme('system')}
+                  className={`px-3 py-1 text-xs font-bold rounded-lg transition-all ${theme === 'system' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                >
+                  System
+                </button>
+              </div>
             </div>
           </div>
         </div>

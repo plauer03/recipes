@@ -36,7 +36,7 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
 
   // Inspo State
-  const [activeTag, setActiveTag] = useState<string | null>(null);
+  const [activeTags, setActiveTags] = useState<string[]>([]);
   const [inspoLoading, setInspoLoading] = useState(false);
   const [inspoRecipe, setInspoRecipe] = useState<Recipe | null>(null);
 
@@ -89,18 +89,22 @@ export default function Home() {
   }
 
   const handleInspo = async (tag: string) => {
-    if (activeTag === tag) {
-      setActiveTag(null);
+    const newTags = activeTags.includes(tag) 
+      ? activeTags.filter(t => t !== tag) 
+      : [...activeTags, tag];
+      
+    setActiveTags(newTags);
+    
+    if (newTags.length === 0) {
       setInspoRecipe(null);
       return;
     }
     
-    setActiveTag(tag);
     setInspoLoading(true);
-    // Fetch all recipes with this tag
+    // Fetch all recipes containing ALL selected tags
     const { data } = await supabase.from('recipes')
       .select('*, profiles:created_by(name)')
-      .contains('tags', [tag]);
+      .contains('tags', newTags);
       
     if (data && data.length > 0) {
       const random = data[Math.floor(Math.random() * data.length)];
@@ -121,8 +125,13 @@ export default function Home() {
 
   return (
     <div className="min-h-full pb-10" style={{ fontFamily: 'var(--font-sans, system-ui)' }}>
+      {/* Greeting */}
+      <div className="px-5 pt-6">
+        <p className="text-sm font-semibold text-muted-foreground">Willkommen zurück 👋</p>
+      </div>
+
       {/* Stats */}
-      <div className="px-5 pt-6 mb-8">
+      <div className="px-5 pt-4 mb-8">
         <div className="grid grid-cols-2 gap-4">
           <div className="bg-card rounded-2xl p-4 border border-border shadow-sm flex items-center gap-4">
             <div className="w-12 h-12 rounded-xl bg-foreground text-background flex items-center justify-center shrink-0">
@@ -154,14 +163,13 @@ export default function Home() {
           </h3>
         </div>
         <div className="flex overflow-x-auto pb-4 gap-2 snap-x snap-mandatory no-scrollbar">
-          {INSPO_TAGS.map((tag, i) => (
+          <div className="w-3 shrink-0" />
+          {INSPO_TAGS.map((tag) => (
             <button
               key={tag}
               onClick={() => handleInspo(tag)}
               className={`snap-start shrink-0 px-4 py-2 rounded-full text-sm font-bold transition-all shadow-sm ${
-                i === 0 ? 'ml-5' : ''
-              } ${i === INSPO_TAGS.length - 1 ? 'mr-5' : ''} ${
-                activeTag === tag 
+                activeTags.includes(tag) 
                   ? 'bg-foreground text-background scale-105' 
                   : 'bg-card text-foreground border border-border hover:bg-secondary'
               }`}
@@ -169,10 +177,11 @@ export default function Home() {
               {tag}
             </button>
           ))}
+          <div className="w-3 shrink-0" />
         </div>
 
         {/* Inspo Result */}
-        {activeTag && (
+        {activeTags.length > 0 && (
           <div className="px-5 mb-4 animate-in fade-in slide-in-from-top-2">
             {inspoLoading ? (
               <div className="w-full h-32 bg-secondary rounded-2xl flex items-center justify-center">
@@ -183,8 +192,8 @@ export default function Home() {
                 onClick={() => router.push(`/recipes/${inspoRecipe.id}`)}
                 className="w-full bg-card rounded-2xl overflow-hidden border border-border shadow-md active:scale-[0.98] transition-all text-left relative"
               >
-                <div className="absolute top-3 left-3 bg-foreground text-background text-[10px] font-bold uppercase px-2 py-1 rounded-full z-10">
-                  {activeTag}
+                <div className="absolute top-3 left-3 bg-foreground text-background text-[10px] font-bold uppercase px-2 py-1 rounded-full z-10 flex gap-1">
+                  {activeTags.map(t => <span key={t}>{t}</span>)}
                 </div>
                 <div className="w-full h-40 bg-muted relative">
                   {inspoRecipe.image_url ? (
@@ -208,7 +217,7 @@ export default function Home() {
               </button>
             ) : (
               <div className="w-full py-8 px-4 bg-secondary rounded-2xl text-center border border-border border-dashed">
-                <p className="text-sm font-medium text-muted-foreground">Leider kein Rezept für "{activeTag}" gefunden.</p>
+                <p className="text-sm font-medium text-muted-foreground">Leider kein Rezept für "{activeTags.join(', ')}" gefunden.</p>
               </div>
             )}
           </div>

@@ -16,6 +16,8 @@ export default function RecipeDetail({ params }: { params: Promise<{ id: string 
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
   const [addingToList, setAddingToList] = useState(false);
+  const [successAdded, setSuccessAdded] = useState(false);
+  const [servings, setServings] = useState(1);
 
   useEffect(() => {
     fetchRecipe();
@@ -28,19 +30,20 @@ export default function RecipeDetail({ params }: { params: Promise<{ id: string 
     const items = recipe.ingredients_data.map((ing: any) => ({
       user_id: user.id,
       ingredient_name: ing.name,
-      original_amount: Number(ing.amount) || 0,
+      original_amount: (Number(ing.amount) || 0) * servings,
       unit: ing.unit || 'g',
       is_checked: false
     }));
 
     const { error } = await supabase.from('shopping_list').insert(items);
     
+    setAddingToList(false);
     if (error) {
       toast.error('Fehler beim Hinzufügen zur Einkaufsliste.');
     } else {
-      toast.success('Zutaten zur Einkaufsliste hinzugefügt!');
+      setSuccessAdded(true);
+      setTimeout(() => setSuccessAdded(false), 2000);
     }
-    setAddingToList(false);
   }
 
   async function fetchRecipe() {
@@ -87,7 +90,7 @@ export default function RecipeDetail({ params }: { params: Promise<{ id: string 
   const isOwner = user?.id === recipe.created_by;
 
   return (
-    <div className="pb-20 min-h-full bg-background" style={{ fontFamily: 'var(--font-sans, system-ui)' }}>
+    <div className="pb-28 min-h-full bg-background" style={{ fontFamily: 'var(--font-sans, system-ui)' }}>
       {/* Hero Image */}
       <div className="relative h-[45dvh] w-full bg-muted">
         {recipe.image_url ? (
@@ -175,31 +178,31 @@ export default function RecipeDetail({ params }: { params: Promise<{ id: string 
           <div className="bg-primary text-primary-foreground rounded-2xl p-4 shadow-md">
             <h3 className="font-bold mb-3 flex items-center justify-between">
               Makros
-              <span className="text-xs bg-primary-foreground/20 px-2 py-1 rounded text-primary-foreground">Pro Portion</span>
+              <span className="text-xs bg-primary-foreground/20 px-2 py-1 rounded text-primary-foreground">Gesamt</span>
             </h3>
             <div className="grid grid-cols-4 gap-2 text-center divide-x divide-primary-foreground/20">
               <div>
                 <div className="text-[10px] uppercase tracking-wider opacity-80 font-bold mb-1">Kcal</div>
                 <div className="font-bold text-lg">
-                  {recipe.ingredients_data.reduce((acc: number, cur: any) => acc + (cur.calories || 0), 0)}
+                  {recipe.ingredients_data.reduce((acc: number, cur: any) => acc + (cur.calories || 0), 0) * servings}
                 </div>
               </div>
               <div>
                 <div className="text-[10px] uppercase tracking-wider opacity-80 font-bold mb-1">Protein</div>
                 <div className="font-bold text-lg">
-                  {recipe.ingredients_data.reduce((acc: number, cur: any) => acc + (cur.protein || 0), 0)}g
+                  {recipe.ingredients_data.reduce((acc: number, cur: any) => acc + (cur.protein || 0), 0) * servings}g
                 </div>
               </div>
               <div>
                 <div className="text-[10px] uppercase tracking-wider opacity-80 font-bold mb-1">Carbs</div>
                 <div className="font-bold text-lg">
-                  {recipe.ingredients_data.reduce((acc: number, cur: any) => acc + (cur.carbs || 0), 0)}g
+                  {recipe.ingredients_data.reduce((acc: number, cur: any) => acc + (cur.carbs || 0), 0) * servings}g
                 </div>
               </div>
               <div>
                 <div className="text-[10px] uppercase tracking-wider opacity-80 font-bold mb-1">Fett</div>
                 <div className="font-bold text-lg">
-                  {recipe.ingredients_data.reduce((acc: number, cur: any) => acc + (cur.fat || 0), 0)}g
+                  {recipe.ingredients_data.reduce((acc: number, cur: any) => acc + (cur.fat || 0), 0) * servings}g
                 </div>
               </div>
             </div>
@@ -208,13 +211,20 @@ export default function RecipeDetail({ params }: { params: Promise<{ id: string 
 
         {/* Ingredients */}
         <div>
-          <h2 className="text-lg font-bold text-foreground mb-4" style={{ fontFamily: 'var(--font-display, system-ui)' }}>Zutaten</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-bold text-foreground" style={{ fontFamily: 'var(--font-display, system-ui)' }}>Zutaten</h2>
+            <div className="flex items-center gap-4 bg-secondary rounded-xl px-2 py-1 shadow-inner border border-border/50">
+              <button onClick={() => setServings(s => Math.max(1, s - 1))} className="text-muted-foreground hover:text-foreground font-bold p-1 active:scale-95 transition-transform">-</button>
+              <span className="font-bold w-4 text-center text-sm">{servings}</span>
+              <button onClick={() => setServings(s => s + 1)} className="text-muted-foreground hover:text-foreground font-bold p-1 active:scale-95 transition-transform">+</button>
+            </div>
+          </div>
           <div className="space-y-2">
             {recipe.ingredients_data && recipe.ingredients_data.length > 0 ? (
               recipe.ingredients_data.map((ing: any, i: number) => (
                 <div key={i} className="flex items-center justify-between py-3 border-b border-border/50 last:border-0">
                   <span className="text-[15px] font-medium text-foreground">{ing.name}</span>
-                  <span className="text-[15px] font-bold text-muted-foreground">{ing.amount} {ing.unit}</span>
+                  <span className="text-[15px] font-bold text-muted-foreground">{ing.amount ? ing.amount * servings : ''} {ing.unit}</span>
                 </div>
               ))
             ) : (
@@ -239,14 +249,18 @@ export default function RecipeDetail({ params }: { params: Promise<{ id: string 
         <button 
           onClick={addToShoppingList}
           disabled={addingToList}
-          className="flex-1 bg-secondary text-foreground font-bold rounded-2xl py-4 flex items-center justify-center gap-2 active:scale-[0.98] transition-all border border-border shadow-sm disabled:opacity-50"
+          className={`flex-1 font-bold rounded-2xl py-4 flex items-center justify-center gap-2 active:scale-[0.98] transition-all border shadow-sm disabled:opacity-50 ${
+            successAdded 
+              ? 'bg-green-500 text-white border-green-500' 
+              : 'bg-secondary text-foreground border-border hover:bg-secondary/80'
+          }`}
         >
-          {addingToList ? <Loader2 className="animate-spin h-5 w-5" /> : <ShoppingCart className="h-5 w-5" />}
-          Einkaufsliste
+          {addingToList ? <Loader2 className="animate-spin h-5 w-5" /> : (successAdded ? <ChefHat className="h-5 w-5" /> : <ShoppingCart className="h-5 w-5" />)}
+          {successAdded ? 'Hinzugefügt!' : 'Einkaufsliste'}
         </button>
         <button 
           onClick={() => toast.success('Viel Spaß beim Kochen!')}
-          className="flex-1 bg-foreground text-background font-bold rounded-2xl py-4 flex items-center justify-center gap-2 active:scale-[0.98] transition-all shadow-md"
+          className="flex-1 bg-foreground text-background font-bold rounded-2xl py-4 flex items-center justify-center gap-2 active:scale-[0.98] transition-all shadow-md hover:bg-foreground/90"
         >
           <ChefHat className="h-5 w-5" />
           Kochen
