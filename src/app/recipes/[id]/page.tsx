@@ -27,10 +27,11 @@ export default function RecipeDetail({ params }: { params: Promise<{ id: string 
     if (!recipe || !user || !recipe.ingredients_data) return;
     setAddingToList(true);
     
+    const scale = servings / (recipe.default_servings || 1);
     const items = recipe.ingredients_data.map((ing: any) => ({
       user_id: user.id,
       ingredient_name: ing.name,
-      original_amount: (Number(ing.amount) || 0) * servings,
+      original_amount: (Number(ing.amount) || 0) * scale,
       unit: ing.unit || 'g',
       is_checked: false
     }));
@@ -59,6 +60,7 @@ export default function RecipeDetail({ params }: { params: Promise<{ id: string 
 
     if (data && !error) {
       setRecipe(data);
+      setServings(data.default_servings || 1);
     }
     setLoading(false);
   }
@@ -182,6 +184,7 @@ export default function RecipeDetail({ params }: { params: Promise<{ id: string 
             </h3>
             <div className="grid grid-cols-4 gap-2 text-center divide-x divide-primary-foreground/20">
               {(() => {
+                const scale = servings / (recipe.default_servings || 1);
                 const formatMacro = (val: number, isKcal: boolean = false) => {
                   if (isKcal) return Math.round(val);
                   if (val < 10) return Number(val.toFixed(1));
@@ -192,25 +195,25 @@ export default function RecipeDetail({ params }: { params: Promise<{ id: string 
                     <div>
                       <div className="text-[10px] uppercase tracking-wider opacity-80 font-bold mb-1">Kcal</div>
                       <div className="font-bold text-lg">
-                        {formatMacro(recipe.ingredients_data.reduce((acc: number, cur: any) => acc + (cur.calories || 0), 0) * servings, true)}
+                        {formatMacro(recipe.ingredients_data.reduce((acc: number, cur: any) => acc + (cur.calories || 0), 0) * scale, true)}
                       </div>
                     </div>
                     <div>
                       <div className="text-[10px] uppercase tracking-wider opacity-80 font-bold mb-1">Protein</div>
                       <div className="font-bold text-lg">
-                        {formatMacro(recipe.ingredients_data.reduce((acc: number, cur: any) => acc + (cur.protein || 0), 0) * servings)}g
+                        {formatMacro(recipe.ingredients_data.reduce((acc: number, cur: any) => acc + (cur.protein || 0), 0) * scale)}g
                       </div>
                     </div>
                     <div>
                       <div className="text-[10px] uppercase tracking-wider opacity-80 font-bold mb-1">Carbs</div>
                       <div className="font-bold text-lg">
-                        {formatMacro(recipe.ingredients_data.reduce((acc: number, cur: any) => acc + (cur.carbs || 0), 0) * servings)}g
+                        {formatMacro(recipe.ingredients_data.reduce((acc: number, cur: any) => acc + (cur.carbs || 0), 0) * scale)}g
                       </div>
                     </div>
                     <div>
                       <div className="text-[10px] uppercase tracking-wider opacity-80 font-bold mb-1">Fett</div>
                       <div className="font-bold text-lg">
-                        {formatMacro(recipe.ingredients_data.reduce((acc: number, cur: any) => acc + (cur.fat || 0), 0) * servings)}g
+                        {formatMacro(recipe.ingredients_data.reduce((acc: number, cur: any) => acc + (cur.fat || 0), 0) * scale)}g
                       </div>
                     </div>
                   </>
@@ -232,12 +235,17 @@ export default function RecipeDetail({ params }: { params: Promise<{ id: string 
           </div>
           <div className="space-y-2">
             {recipe.ingredients_data && recipe.ingredients_data.length > 0 ? (
-              recipe.ingredients_data.map((ing: any, i: number) => (
-                <div key={i} className="flex items-center justify-between py-3 border-b border-border/50 last:border-0">
-                  <span className="text-[15px] font-medium text-foreground">{ing.name}</span>
-                  <span className="text-[15px] font-bold text-muted-foreground">{ing.amount ? ing.amount * servings : ''} {ing.unit}</span>
-                </div>
-              ))
+              recipe.ingredients_data.map((ing: any, i: number) => {
+                const scale = servings / (recipe.default_servings || 1);
+                return (
+                  <div key={i} className="flex items-center justify-between py-3 border-b border-border/50 last:border-0">
+                    <span className="text-[15px] font-medium text-foreground">{ing.name}</span>
+                    <span className="text-[15px] font-bold text-muted-foreground">
+                      {ing.amount ? Number((ing.amount * scale).toFixed(1)) : ''} {ing.unit}
+                    </span>
+                  </div>
+                );
+              })
             ) : (
               <p className="text-muted-foreground text-sm">Keine Zutaten hinterlegt.</p>
             )}

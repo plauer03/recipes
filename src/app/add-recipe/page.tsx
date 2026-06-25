@@ -25,6 +25,7 @@ export default function AddRecipe() {
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [prepTime, setPrepTime] = useState('15');
   const [cookTime, setCookTime] = useState('20');
+  const [defaultServings, setDefaultServings] = useState('1');
   const [difficulty, setDifficulty] = useState('easy');
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -111,6 +112,7 @@ export default function AddRecipe() {
         ingredients_data: parsedIngredients,
         prep_time: parseInt(prepTime) || 0,
         cook_time: parseInt(cookTime) || 0,
+        default_servings: parseInt(defaultServings) || 1,
         difficulty,
         image_url: finalImageUrl,
         created_by: user.id
@@ -202,7 +204,7 @@ export default function AddRecipe() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label className="text-foreground font-semibold">Vorbereitung (Min)</Label>
                 <Input
@@ -218,6 +220,15 @@ export default function AddRecipe() {
                   type="number"
                   value={cookTime}
                   onChange={(e) => setCookTime(e.target.value)}
+                  className="bg-secondary border-none h-12 rounded-xl px-4 text-[15px]"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-foreground font-semibold">Portionen</Label>
+                <Input
+                  type="number"
+                  value={defaultServings}
+                  onChange={(e) => setDefaultServings(e.target.value)}
                   className="bg-secondary border-none h-12 rounded-xl px-4 text-[15px]"
                 />
               </div>
