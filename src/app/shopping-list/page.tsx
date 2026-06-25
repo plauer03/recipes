@@ -90,7 +90,7 @@ export default function ShoppingListPage() {
                 </button>
                 <div className="flex-1 min-w-0">
                   <p className={`font-bold text-[17px] truncate ${item.is_checked ? "line-through" : ""}`}>
-                    {item.ingredients?.name || "Unbekannte Zutat"}
+                    {item.ingredient_name || item.ingredients?.name || "Unbekannte Zutat"}
                   </p>
                   <p className="text-[11px] font-bold text-[var(--muted-foreground)] uppercase tracking-widest mt-0.5">
                     {item.original_amount ? Math.round(item.original_amount * 10) / 10 : item.amount_in_grams} {item.unit || item.ingredients?.unit_type || 'g'}

@@ -28,13 +28,15 @@ export default function RecipeDetailModal({
   const isOwner = currentUserId === recipe.created_by;
   const authorName = recipe.profiles?.name || "Unbekannt";
   const [portions, setPortions] = useState(recipe.base_portions || 1);
-  const [recipeIngredients, setRecipeIngredients] = useState<any[]>([]);
+  const [recipeIngredients, setRecipeIngredients] = useState<any[]>(recipe.ingredients_data || []);
   const [isCooking, setIsCooking] = useState(false);
   const [addedToCart, setAddedToCart] = useState(false);
   const supabase = createClient();
 
   useEffect(() => {
-    fetchIngredients();
+    if (!recipe.ingredients_data || recipe.ingredients_data.length === 0) {
+      fetchIngredients();
+    }
   }, [recipe.id]);
 
   async function fetchIngredients() {
@@ -43,23 +45,23 @@ export default function RecipeDetailModal({
       .select('*, ingredients(name, unit_type, calories_per_100g)')
       .eq('recipe_id', recipe.id);
     
-    if (ings) setRecipeIngredients(ings);
+    if (ings) {
+      const mapped = ings.map(i => ({
+        name: i.ingredients?.name || "Unbekannt",
+        amount: i.amount,
+        unit: i.unit,
+        ingredient_id: i.ingredient_id,
+        calories: ((i.amount * (i.unit === 'EL' ? 15 : i.unit === 'TL' ? 5 : i.unit === 'Stk' ? 100 : 1)) / 100) * (i.ingredients?.calories_per_100g || 0)
+      }));
+      setRecipeIngredients(mapped);
+    }
   }
 
   const getCaloriesPerPortion = () => {
+    if (recipe.total_calories > 0) return Math.round(recipe.total_calories / (recipe.base_portions || 1));
     if (!recipeIngredients || recipeIngredients.length === 0) return 0;
     
-    let totalCals = 0;
-    for (const ing of recipeIngredients) {
-      let amountInGrams = ing.amount;
-      if (ing.unit === 'EL') amountInGrams *= 15;
-      if (ing.unit === 'TL') amountInGrams *= 5;
-      if (ing.unit === 'Stk') amountInGrams *= 100;
-      
-      const calsPer100 = ing.ingredients?.calories_per_100g || 0;
-      totalCals += (amountInGrams / 100) * calsPer100;
-    }
-    
+    let totalCals = recipeIngredients.reduce((sum, ing) => sum + (ing.calories || 0), 0);
     return Math.round(totalCals / (recipe.base_portions || 1));
   };
 
@@ -69,17 +71,19 @@ export default function RecipeDetailModal({
 
     if (recipeIngredients.length > 0) {
       const scale = portions / (recipe.base_portions || 1);
-      const items = recipeIngredients.map(link => {
-        let finalAmount = link.amount * scale;
-        if (link.unit === 'EL') finalAmount *= 15;
-        if (link.unit === 'TL') finalAmount *= 5;
+      const items = recipeIngredients.map(ing => {
+        let amountInGrams = ing.amount * scale;
+        if (ing.unit === 'EL') amountInGrams *= 15;
+        if (ing.unit === 'TL') amountInGrams *= 5;
+        if (ing.unit === 'Stk') amountInGrams *= 100;
 
         return {
           user_id: user.id,
-          ingredient_id: link.ingredient_id,
-          amount_in_grams: Math.round(finalAmount),
-          original_amount: link.amount * scale,
-          unit: link.unit
+          ingredient_name: ing.name,
+          ingredient_id: ing.ingredient_id || null, // fallback for old ones
+          amount_in_grams: Math.round(amountInGrams),
+          original_amount: ing.amount * scale,
+          unit: ing.unit
         };
       });
       
@@ -159,7 +163,7 @@ export default function RecipeDetailModal({
                 const calcAmount = Math.round(ing.amount * scale * 10) / 10;
                 return (
                   <div key={i} className="p-4 flex justify-between items-center text-sm">
-                    <span className="font-bold">{ing.ingredients?.name || "Unbekannt"}</span>
+                    <span className="font-bold">{ing.name}</span>
                     <span className="font-bold text-[var(--muted-foreground)] uppercase tracking-tighter text-xs">{calcAmount} {ing.unit}</span>
                   </div>
                 );
@@ -196,7 +200,7 @@ export default function RecipeDetailModal({
                     return (
                       <div key={i} className="flex items-center gap-4 bg-[var(--card)] p-4 rounded-2xl border border-[var(--border)]/5 shadow-sm">
                         <div className="w-6 h-6 rounded-full border-2 border-[var(--primary)] flex items-center justify-center shrink-0"><Check size={14} className="text-white" /></div>
-                        <span className="font-bold flex-1">{ing.ingredients?.name}</span>
+                        <span className="font-bold flex-1">{ing.name}</span>
                         <span className="font-bold text-[var(--primary)]">{calcAmount} {ing.unit}</span>
                       </div>
                     );
