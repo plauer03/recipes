@@ -93,7 +93,7 @@ export default function ShoppingListPage() {
                     {item.ingredients?.name || "Unbekannte Zutat"}
                   </p>
                   <p className="text-[11px] font-bold text-[var(--muted-foreground)] uppercase tracking-widest mt-0.5">
-                    {item.amount_in_grams}{item.ingredients?.unit_type || 'g'}
+                    {item.original_amount ? Math.round(item.original_amount * 10) / 10 : item.amount_in_grams} {item.unit || item.ingredients?.unit_type || 'g'}
                   </p>
                 </div>
               </div>

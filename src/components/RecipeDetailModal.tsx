@@ -77,7 +77,9 @@ export default function RecipeDetailModal({
         return {
           user_id: user.id,
           ingredient_id: link.ingredient_id,
-          amount_in_grams: Math.round(finalAmount)
+          amount_in_grams: Math.round(finalAmount),
+          original_amount: link.amount * scale,
+          unit: link.unit
         };
       });
       
