@@ -1,16 +1,20 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Check, ShoppingBag, Plus, Loader2, X } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Check, ShoppingBag, Plus, Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
 export default function ShoppingListPage() {
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const timeoutRefs = useRef<{ [key: string]: NodeJS.Timeout }>({});
   const supabase = createClient();
 
   useEffect(() => {
     fetchItems();
+    return () => {
+      Object.values(timeoutRefs.current).forEach(clearTimeout);
+    };
   }, []);
 
   async function fetchItems() {
@@ -35,23 +39,22 @@ export default function ShoppingListPage() {
   }
 
   const toggleItem = async (id: string, currentStatus: boolean) => {
-    setItems(items.map(item => item.id === id ? { ...item, is_checked: !currentStatus } : item));
-    await supabase.from('shopping_list').update({ is_checked: !currentStatus }).eq('id', id);
+    const newStatus = !currentStatus;
+    setItems(items.map(item => item.id === id ? { ...item, is_checked: newStatus } : item));
+    await supabase.from('shopping_list').update({ is_checked: newStatus }).eq('id', id);
 
-    if (!currentStatus) {
-      setTimeout(async () => {
+    if (newStatus) {
+      timeoutRefs.current[id] = setTimeout(async () => {
         const { error } = await supabase.from('shopping_list').delete().eq('id', id);
         if (!error) {
           setItems(prev => prev.filter(i => i.id !== id));
         }
       }, 3000);
-    }
-  };
-
-  const deleteItem = async (id: string) => {
-    const { error } = await supabase.from('shopping_list').delete().eq('id', id);
-    if (!error) {
-      setItems(items.filter(i => i.id !== id));
+    } else {
+      if (timeoutRefs.current[id]) {
+        clearTimeout(timeoutRefs.current[id]);
+        delete timeoutRefs.current[id];
+      }
     }
   };
 
@@ -93,9 +96,6 @@ export default function ShoppingListPage() {
                     {item.amount_in_grams}{item.ingredients?.unit_type || 'g'}
                   </p>
                 </div>
-                <button onClick={() => deleteItem(item.id)} className="text-red-500/20 active:text-red-500 p-2">
-                  <X size={18} />
-                </button>
               </div>
             ))}
           </div>
