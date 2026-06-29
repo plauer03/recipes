@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useTheme } from "next-themes";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
   User, LogOut, 
   ChevronRight, Moon, 
@@ -187,25 +188,17 @@ export default function ProfilePage() {
                 <Moon size={18} />
               </div>
               <span className="flex-1 text-left font-semibold text-foreground">Erscheinungsbild</span>
-              <div className="flex gap-1 bg-secondary p-1 rounded-xl">
-                <button 
-                  onClick={() => setTheme('light')}
-                  className={`px-3 py-1 text-xs font-bold rounded-lg transition-all ${theme === 'light' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
-                >
-                  Hell
-                </button>
-                <button 
-                  onClick={() => setTheme('dark')}
-                  className={`px-3 py-1 text-xs font-bold rounded-lg transition-all ${theme === 'dark' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
-                >
-                  Dunkel
-                </button>
-                <button 
-                  onClick={() => setTheme('system')}
-                  className={`px-3 py-1 text-xs font-bold rounded-lg transition-all ${theme === 'system' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
-                >
-                  System
-                </button>
+              <div className="flex gap-1 rounded-xl">
+                <Select value={theme} onValueChange={setTheme}>
+                  <SelectTrigger className="w-[110px] bg-secondary border-none h-9 rounded-xl px-3 text-xs font-bold focus:ring-0 shadow-sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="light" className="text-xs font-bold">Hell</SelectItem>
+                    <SelectItem value="dark" className="text-xs font-bold">Dunkel</SelectItem>
+                    <SelectItem value="system" className="text-xs font-bold">System</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           </div>
